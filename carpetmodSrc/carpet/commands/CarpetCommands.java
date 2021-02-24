@@ -31,6 +31,7 @@ public class CarpetCommands {
         handler.registerCommand(new CommandRepopulate());
         handler.registerCommand(new CommandRNG());
         handler.registerCommand(new CommandScoreboardPublic());
+        handler.registerCommand(new CommandScript());
         handler.registerCommand(new CommandSpawn());
         handler.registerCommand(new CommandStructure());
         handler.registerCommand(new CommandSubscribe());

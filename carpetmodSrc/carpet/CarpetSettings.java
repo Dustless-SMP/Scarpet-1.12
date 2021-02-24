@@ -147,8 +147,11 @@ public class CarpetSettings
     @Rule(desc = "Enables /lagspike for manually induced lag spikes", category = COMMANDS)
     public static boolean commandLagspike;
 
-    @Rule(desc = "Reduces the permition level to kick players for everyone.", category = COMMANDS)
+    @Rule(desc = "Reduces the permission level to kick players for everyone.", category = COMMANDS)
     public static boolean publicKick;
+
+    @Rule(desc = "Scarpet in 1.12, yay!", category = {COMMANDS, SCARPET})
+    public static boolean commandScript;
 
     // ===== CREATIVE TOOLS ===== //
 
@@ -1040,7 +1043,7 @@ public class CarpetSettings
     }
 
     public static enum RuleCategory {
-        TNT, FIX, SURVIVAL, CREATIVE, EXPERIMENTAL, OPTIMIZATIONS, FEATURE, COMMANDS
+        TNT, FIX, SURVIVAL, CREATIVE, EXPERIMENTAL, OPTIMIZATIONS, FEATURE, COMMANDS, SCARPET
     }
 
     private static boolean validatePositive(int value) {
