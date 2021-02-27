@@ -7,6 +7,7 @@ import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.server.MinecraftServer;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.List;
@@ -51,14 +52,21 @@ public class CommandScript extends CommandCarpetBase{
 
         String script = scriptBuilder.toString();
 
-
-        Expression.LOGGER.info("Initialising Tokeniser...");
-        Tokenizer tok = new Tokenizer(script);
-        Expression.LOGGER.info("Tokenised script, printing tokens...");
-
-        while(tok.hasNext()){
-            Expression.LOGGER.info("Token: " + tok.next().toString());
+        Logger logger = Expression.LOGGER;
+        
+        logger.info("Tokenising...");
+        Tokenizer tokenizer = new Tokenizer(script);
+        while (tokenizer.hasNext()){
+            logger.info("Tokens: "+tokenizer.next());
         }
-        Expression.LOGGER.info("Finished printing tokens!");
+
+        logger.info("Tokenised successfully.\n");
+
+        logger.info("Parsing Expression...");
+        Expression expression = new Expression(script);
+        logger.info("Parsed script, printing RPN...");
+        for(Tokenizer.Token tok: expression.rpn)
+            logger.info("Token: "+tok.toString());
+        logger.info("Finished printing tokens!");
     }
 }

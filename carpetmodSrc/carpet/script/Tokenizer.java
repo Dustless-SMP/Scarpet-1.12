@@ -2,9 +2,12 @@ package carpet.script;
 
 import carpet.script.exception.TempException;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class Tokenizer implements Iterator<Tokenizer.Token> {
 
@@ -13,7 +16,6 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
     /** What character to use for minus sign (negative values). */
     private static final char minusSign = '-';
     private String input;
-    private Expression expression;
     private int pos = 0;
     private int linepos = 0;
     private int lineno = 0;
@@ -23,7 +25,6 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
 
     public Tokenizer(String input) {
         this.input = input;
-        this.expression = new Expression();
     }
 
     private char peekNextChar(){
@@ -85,13 +86,13 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                 linepos++;
                 ch = pos == input.length() ? 0 : input.charAt(pos);
             }
-            tok.type = Token.TokenType.NUM;
+            tok.type = isHex? Token.TokenType.HEX_NUM : Token.TokenType.NUM;
         } else if(ch =='\''){
             pos++;
             linepos++;
             tok.type = Token.TokenType.STRING;
             if(pos == input.length())
-                throw new TempException("Program truncated"); //todo replace with other exception
+                throw new TempException("Program truncated");
             ch = input.charAt(pos);
             while(ch !='\''){
                 if(ch=='\\'){
@@ -102,11 +103,11 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
 
                         case 't':
                             throw new TempException("Tab character not supported");
-                            //tok.append('\t')
+                            //tok.append('\t'); break;
 
                         case 'r':
                             throw new TempException("Carriage return character not supported");
-                            //tok.append('\r')
+                            //tok.append('\r'); break;
                         case '\\':
                         case '\'':
                             tok.append(peekNextChar());
@@ -176,8 +177,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
             int validOperatorSeenUntil = -1;
             while (!Character.isLetter(ch) && !Character.isDigit(ch) && "_".indexOf(ch) < 0
                     && !Character.isWhitespace(ch) && ch != '(' && ch != ')' && ch != ','
-                    && (pos < input.length()))
-            {
+                    && (pos < input.length())) {
                 greedyMatch += ch;
                 if (comments && "//".equals(greedyMatch))
                 {
@@ -205,40 +205,35 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                 }
                 ch = pos == input.length() ? 0 : input.charAt(pos);
             }
-            if (newLinesMarkers && "$".equals(greedyMatch))
-            {
+            if (newLinesMarkers && "$".equals(greedyMatch)){
                 lineno++;
                 linepos = 0;
                 tok.type = Token.TokenType.MARKER;
                 tok.append('$');
                 return tok; // skipping previous token lookback
             }
-            if (validOperatorSeenUntil != -1)
-            {
+            if (validOperatorSeenUntil != -1) {
                 tok.append(input.substring(initialPos, validOperatorSeenUntil));
                 pos = validOperatorSeenUntil;
                 linepos = initialLinePos+validOperatorSeenUntil-initialPos;
             }
-            else
-            {
+            else {
                 tok.append(greedyMatch);
             }
 
             if (previousToken == null || previousToken.type == Token.TokenType.OPERATOR
                     || previousToken.type == Token.TokenType.LPAR || previousToken.type == Token.TokenType.COMMA
                     || (previousToken.type == Token.TokenType.MARKER && ( previousToken.surface.equals("{") || previousToken.surface.equals("[") ) )
-            )
-            {
+            ) {
                 tok.surface += "u";
                 tok.type = Token.TokenType.UNARY_OPERATOR;
             }
-            else
-            {
+            else {
                 tok.type = Token.TokenType.OPERATOR;
             }
         }
 
-        if (expression != null && previousToken != null &&(
+        if (previousToken != null &&(
                     tok.type == Token.TokenType.NUM ||
                     tok.type == Token.TokenType.VAR ||
                     tok.type == Token.TokenType.STRING ||
@@ -252,18 +247,71 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                     ( previousToken.type == Token.TokenType.MARKER && ( previousToken.surface.equalsIgnoreCase("}") || previousToken.surface.equalsIgnoreCase("]"))) ||
                     previousToken.type == Token.TokenType.STRING
                 )
-            ) {
+            )
             throw new TempException("'"+tok.surface +"' is not allowed after '"+previousToken.surface+"'");
-        }
 
         return previousToken = tok;
     }
 
+    private static boolean isSemicolon(Token tok)
+    {
+        return (    tok.type == Token.TokenType.OPERATOR && tok.surface.equals(";") )
+                || (tok.type == Token.TokenType.UNARY_OPERATOR && tok.surface.equals(";u") );
+    }
+
+    public List<Token> postProcess(){
+        Iterable<Token> iterable = ()-> this;
+        List<Token> originalTokens = StreamSupport.stream(iterable.spliterator(), false).collect(Collectors.toList());
+        originalTokens.removeIf((t)-> t.surface.equals(";") && t.type == Tokenizer.Token.TokenType.OPERATOR);//stripping all semicolons cos we already checked for errors regarding those (i think...)
+        List<Token> cleanedTokens = new ArrayList<>();
+        Token last = null;
+
+        while(originalTokens.size()>0){
+            Token current = originalTokens.remove(originalTokens.size()-1);
+
+            //skipping comments, but they're not implemented, so commenting out to reduce brainache
+            //if (current.type == Token.TokenType.MARKER && current.surface.startsWith("//"))
+            //    continue;
+
+            if(!isSemicolon(current) || (last!=null && last.type != Token.TokenType.RPAR && last.type != Token.TokenType.COMMA && !isSemicolon(last))){
+                if (isSemicolon(current)){ //idrk why this is necessary, just copied from gnembons code...
+                    current.surface = ";";
+                    current.type = Token.TokenType.OPERATOR;
+                }
+
+                // This bit I do understand however, it is to convert [] into a list and {} into a map. However, Imm leave this as a todo implement, cos language doesnt have support for it yet
+                //if (current.type == Token.TokenType.MARKER){
+                //    // dealing with tokens in reversed order
+                //    if ("{".equals(current.surface))
+                //    {
+                //        cleanedTokens.add(current.morphedInto(Token.TokenType.OPEN_PAREN, "("));
+                //        current.morph(Token.TokenType.FUNCTION, "m");
+                //    }
+                //    else if ("[".equals(current.surface))
+                //    {
+                //        cleanedTokens.add(current.morphedInto(Token.TokenType.OPEN_PAREN, "("));
+                //        current.morph(Token.TokenType.FUNCTION, "l");
+                //    }
+                //    else if ("}".equals(current.surface) || "]".equals(current.surface))
+                //    {
+                //        current.morph(Token.TokenType.CLOSE_PAREN, ")");
+                //    }
+                //}
+                cleanedTokens.add(current);
+            }
+            if (!(current.type == Token.TokenType.MARKER && current.surface.equals("$")))
+                last = current;
+        }
+
+        Collections.reverse(cleanedTokens); //cos inputted in reverse order to parse properly
+        return cleanedTokens;
+    }
+
     public static class Token {
 
-        enum TokenType {
+        public enum TokenType {
             LPAR, RPAR, FUNC, OPERATOR, UNARY_OPERATOR, COMMA,
-            NUM, STRING, VAR, MARKER,
+            NUM, HEX_NUM, STRING, VAR, MARKER,
         }
 
         public String surface = "";
@@ -271,6 +319,13 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
         public int pos;
         public int linepos;
         public int lineno;
+
+        public Token(){}
+
+        public Token(String surface, TokenType tokType){ //for custom marker for varargs functions
+            this.surface = surface;
+            this.type = tokType;
+        }
 
         public int length()
         {
