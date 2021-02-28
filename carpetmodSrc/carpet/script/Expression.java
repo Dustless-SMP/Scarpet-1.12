@@ -1,38 +1,71 @@
 package carpet.script;
 
-import carpet.script.exception.TempException;
+import carpet.script.exception.InternalExpressionException;
+import carpet.script.language.Operators;
+import carpet.script.value.NumericValue;
+import carpet.script.value.StringValue;
 import carpet.script.value.Value;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class Expression {
 
     public static final Logger LOGGER = LogManager.getLogger("[SCARPET]");
 
+    public static final Expression none = new Expression("null");
 
-    public static Map<String, Fluff.Operator> operators = new HashMap<>();
-    public static boolean isAnOperator(String s){
+    public Map<String, Fluff.Operator> operators = new HashMap<>();
+    public boolean isAnOperator(String s){
         return operators.containsKey(s);
     }
-    public static Map<String, Value> variables = new HashMap<>();
-    public static boolean isAVariable(String s){
-        return variables.containsKey(s);
+    public Map<String, Value> variables = new HashMap<>();
+    public Map<String, Value> globalVariables = new HashMap<>();
+    public boolean isAVariable(String s){
+        return variables.containsKey(s) || globalVariables.containsKey(s);
     }
-    public static Map<String, Fluff.Functions> functions = new HashMap<>();
-    public static boolean isAFunction(String s){
+
+    public Value getOrSetAnyVariable(String name){
+        if(globalVariables.containsKey(name))
+            return globalVariables.get(name);
+        if(variables.containsKey(name))
+            return variables.get(name);
+        Value val = Value.ZERO;
+        setAnyVariable(name, val);
+        return val;
+    }
+
+    public Value setAnyVariable(String name, Value v){
+        if(name.startsWith("global_"))
+            globalVariables.put(name, v);
+        else
+            variables.put(name, v);
+        return v;
+    }
+
+    public Map<String, Fluff.Functions> functions = new HashMap<>();
+    public boolean isAFunction(String s){
         return functions.containsKey(s);
+    }
+    public Set<String> getFunctionNames() {
+        return functions.keySet();
     }
 
 
     public String expression;
     public List<Tokenizer.Token> rpn = new ArrayList<>(); // this is after shunting the yard (so with call to shuntingYard()
+    public Value evalValue;
 
     public Expression(String expression){
 
@@ -40,8 +73,9 @@ public class Expression {
         //todo rest of functions/operators here before evaluation
 
 
-        this.expression = expression.trim().replaceAll("\\r\\n?", "\n").replaceAll("\\t","   ");
+        this.expression = expression.replaceAll("\\r\\n?", "\n").replaceAll("\\t","   ");
         this.rpn = shuntingYard();
+        this.evalValue = evaluate();
     }
 
     public List<Tokenizer.Token> shuntingYard(){ // converting from sequence of tokens to RPN (Reverse Polish Notation) so it can be evaluated easier (https://en.wikipedia.org/wiki/Shunting-yard_algorithm)
@@ -62,39 +96,41 @@ public class Expression {
                 case HEX_NUM:
                     if (previousToken != null && (previousToken.type == Tokenizer.Token.TokenType.NUM ||
                             previousToken.type == Tokenizer.Token.TokenType.STRING))
-                        throw new TempException("Missing operator");
+                        throw new InternalExpressionException("Missing operator");
                     outputQueue.add(token);
                     break;
                 case VAR: //todo worry about variable and functions properly later
                     outputQueue.add(token);
                     break;
-                case FUNC:
-                    //stack.push(token);
+                case FUNC://not checking properly here incase were assigning
                     outputQueue.add(token);
+
+                    stack.push(token);
+
                     lastFunction = token;
                     break;
                 case COMMA:
                     if(previousToken != null && previousToken.type == Tokenizer.Token.TokenType.OPERATOR)
-                        throw new TempException("Missing parameter(s) for operator '" + previousToken.surface +"'");
+                        throw new InternalExpressionException("Missing parameter(s) for operator '" + previousToken.surface +"'");
 
                     while(!stack.isEmpty() && stack.peek().type != Tokenizer.Token.TokenType.LPAR)
                         outputQueue.add(stack.pop());
 
                     if(stack.isEmpty()){
                         if(lastFunction == null)
-                            throw new TempException("Unexpected comma");
+                            throw new InternalExpressionException("Unexpected comma");
                         else
-                            throw new TempException("Parse error for function " + lastFunction.surface);
+                            throw new InternalExpressionException("Parse error for function " + lastFunction.surface);
                     }
                     break;
                 case OPERATOR:
                 case UNARY_OPERATOR:
                     if (previousToken != null && (previousToken.type == Tokenizer.Token.TokenType.COMMA || previousToken.type == Tokenizer.Token.TokenType.LPAR))
-                        throw new TempException("Missing parameter(s) for operator '" + token.surface +"'");
+                        throw new InternalExpressionException("Missing parameter(s) for operator '" + token.surface +"'");
 
                     Fluff.Operator o = operators.getOrDefault(token.surface, null);
                     if(o == null)
-                        throw new TempException("Unknown operator '" + token.surface + "'");
+                        throw new InternalExpressionException("Unknown operator '" + token.surface + "'");
 
                     Tokenizer.Token nextToken = stack.isEmpty() ? null : stack.peek();
 
@@ -121,7 +157,7 @@ public class Expression {
                     }
 
                     if(lastParen == null)
-                        throw new TempException("Mismatched parentheses");
+                        throw new InternalExpressionException("Mismatched parentheses");
                     stack.pop(); // discarding the pair of brackets, but only after checking that there are no excess right parentheses, in which case we oops.
                     break;
 
@@ -140,56 +176,125 @@ public class Expression {
 
     /**
      * This is the method which evaluates the RPN expression returned by {@code shuntingYard()} method.
-     * It works very simply: At this stage, there are only literals(strings and numbers), functions and operators (which
-     * for all intents and purposes I can treat as functions as well). So when I am running through, I push all literals
-     * onto the stack. Then when I see a function, I look at the stack to give it its arguments (how many ever it needs).
-     * I can then send those to the function to be evaluated (and throw appropriate errors), and put the output onto the
-     * stack(cos its gonna be a literal). Then I just continue, and at the end, I have one item on the stack, and that's
-     * my final answer. It uses The RPN expression returned from parsing the Tokenised expression.
+     * It works very simply: At this stage, there are only literals(strings and numbers), functions (unimplemented),
+     * variables and operators (which for all intents and purposes I can treat as fancy functions as well). So when I am
+     * running through, I push all literals onto the stack. Then when I see a function, I look at the stack to give it
+     * its arguments (how many ever it needs). I can then send those to the function to be evaluated (and throw appropriate
+     * errors), and put the output onto the stack(cos its gonna be a literal). Then I just continue, and at the end, I
+     * have one item on the stack, and that's my final answer, which I can output to the player/user.
      */
 
-    private void evaluate(){
-        Stack<Tokenizer.Token> stack = new Stack<>();
+    private Value evaluate(){
+        Stack<Value> stack = new Stack<>();
 
-        for(Tokenizer.Token token:rpn){
+        //To push arguments for functions, let's see if it works...
+
+        for(Tokenizer.Token token: this.rpn){
             switch (token.type){
                 case STRING:
+                    StringValue stringValue = new StringValue(token.surface);
+
+                    stack.push(stringValue);
+                    break;
                 case NUM:
-                case HEX_NUM:
-                case LPAR: //cos I push them onto the stack to be evaluated so I can then detect them as the end of a function
-                case VAR: //don't define here cos I may be assigning the variable, in which case I check while performing the operation
-                    stack.push(token);
+                    NumericValue numVal;
+                    try{
+                        numVal = new NumericValue(token.surface);
+                    } catch (NumberFormatException nfe) {
+                        throw new InternalExpressionException("Not a Number");
+                    }
+                    stack.push(numVal);
                     break;
 
+                case HEX_NUM:
+                    NumericValue hexVal = new NumericValue(new BigInteger(token.surface.substring(2), 16).doubleValue());
+                    stack.push(hexVal);
+                    break;
+
+                case VAR: //If variable is undefined, set to 0 default value, if not get its value
+                    stack.push(getOrSetAnyVariable(token.surface));
+                    break;
+
+                case UNARY_OPERATOR: {
+                    final Value value = stack.pop();
+                    Value result = operators.get(token.surface).apply(value);
+                    stack.push(result);
+                    break;
+                }
+
                 case OPERATOR:
+                    Value value2 = stack.pop(); //cos second value is inputted last
+                    Value value1 = stack.pop();
+
                     Fluff.Operator o = operators.get(token.surface);
+                    LOGGER.info(o.getSurface());
+                    Value result = o.apply(value1, value2);
+                    stack.push(result);
+                    break;
 
-                    List<Value> args = new ArrayList<>();
-
-                    for (int i = 0; i <o.getArguments(); i++) { //we already added check for number of operators, so no need here. todo more sophisticated check for functions
-                        args.add(Value.fromToken(stack.pop()));
-                    }
-                    o.fun.apply(args);
+                case LPAR: //todo figure this out (if its at all necessary)
+                    //functionDepth++;
+                    //break;
 
                 case FUNC:
-                    if(!isAFunction(token.surface))
-                        throw new TempException("Unknown function '"+token.surface+"'");
+                    //if(!isAFunction(token.surface)) //todo function definitions
+                    //    throw new InternalExpressionException("Invalid function '"+token.surface+"'");
 
+                    LOGGER.error("Unsupported operation (so far) (Attempted to parse '"+token.type.name()+"')");
+
+
+                    break;
 
                 default:
-                    throw new TempException("How is this token even here?"+token.toString());
+                    throw new InternalExpressionException("How is this token even here? "+token.toString());
             }
+
         }
-
-
+        return stack.pop();
     }
 
-    public static void addBinaryOperator(String surface, int precedence, boolean leftAssoc, Function<List<Value>, Value> fun) {
+    public void addBinaryOperator(String surface, int precedence, boolean leftAssoc, BiFunction<Value, Value, Value> fun) {
         operators.put(surface, new Fluff.Operator(
                 surface,
                 precedence,
                 2,
                 leftAssoc,
+                values -> fun.apply(values.get(0), values.get(1))
+        ));
+    }
+
+    public void addUnaryOperator(String surface, int precedence, boolean leftAssoc, Function<Value, Value> fun){
+        operators.put(surface, new Fluff.Operator(
+                surface,
+                precedence,
+                1,
+                leftAssoc,
+                values -> fun.apply(values.get(0))
+        ));
+    }
+
+    public void addUnaryFunction(String name, Function<Value, Value> fun){
+        functions.put(name, new Fluff.Functions(
+                name,
+                1,
+                values -> fun.apply(values.get(0))
+        ));
+    }
+
+    public void addBuiltInFunction(String name, int args, Function<List<Value>, Value> fun){
+        functions.put(name, new Fluff.Functions(
+                name,
+                args,
+                fun
+        ));
+    }
+
+    public void addUserDefinedFunction(String name, int args, int minArgs, boolean varArgs, Function<List<Value>, Value> fun){ //todo
+        functions.put(name, new Fluff.Functions(
+                name,
+                args,
+                minArgs,
+                varArgs,
                 fun
         ));
     }

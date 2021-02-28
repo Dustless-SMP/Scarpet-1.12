@@ -1,11 +1,15 @@
-package carpet.script;
+package carpet.script.language;
 
+import carpet.script.Expression;
+import carpet.script.value.NumericValue;
 import carpet.script.value.Value;
 
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
+
+/**
+ * This is the class of all the Operators used in scarpet language.
+ */
 
 public class Operators {
     public static final Map<String, Integer> precedence = new HashMap<String, Integer>(){{
@@ -24,14 +28,14 @@ public class Operators {
     }};
 
     public static void apply(Expression expression) { // todo rest of operators later
-        Expression.addBinaryOperator("+", precedence.get("addition+-"), true, (lv)->lv.get(0).add(lv.get(1)));
-        Expression.addBinaryOperator("-", precedence.get("addition+-"), true, (lv)->lv.get(0).subtract(lv.get(1)));
-        Expression.addBinaryOperator("*", precedence.get("multiplication*/%"), true, (lv)->lv.get(0).multiply(lv.get(1)));
-        Expression.addBinaryOperator("/", precedence.get("multiplication*/%"), true, (lv)->lv.get(0).divide(lv.get(1)));
-        //expression.addBinaryOperator("%", precedence.get("multiplication*/%"), true, (v1, v2) ->
-        //        new NumericValue(NumericValue.asNumber(v1).getDouble() % NumericValue.asNumber(v2).getDouble()));
-        //expression.addBinaryOperator("^", precedence.get("exponent^"), false, (v1, v2) ->
-        //        new NumericValue(java.lang.Math.pow(NumericValue.asNumber(v1).getDouble(), NumericValue.asNumber(v2).getDouble())));
+        expression.addBinaryOperator("+", precedence.get("addition+-"), true, Value::add);
+        expression.addBinaryOperator("-", precedence.get("addition+-"), true, Value::subtract);
+        expression.addBinaryOperator("*", precedence.get("multiplication*/%"), true, Value::multiply);
+        expression.addBinaryOperator("/", precedence.get("multiplication*/%"), true, Value::divide);
+        expression.addBinaryOperator("%", precedence.get("multiplication*/%"), true, (v1, v2) ->
+                new NumericValue(NumericValue.asNumber(v1).getDouble() % NumericValue.asNumber(v2).getDouble()));
+        expression.addBinaryOperator("^", precedence.get("exponent^"), false, (v1, v2) ->
+                new NumericValue(java.lang.Math.pow(NumericValue.asNumber(v1).getDouble(), NumericValue.asNumber(v2).getDouble())));
 
         //expression.addLazyBinaryOperator("&&", precedence.get("and&&"), false, (c, t, lv1, lv2) ->
         //{
@@ -49,56 +53,49 @@ public class Operators {
 
         //expression.addBinaryOperator("~", precedence.get("attribute~:"), true, Value::in);
 
-        //expression.addBinaryOperator(">", precedence.get("compare>=><=<"), false, (v1, v2) ->
-        //        v1.compareTo(v2) > 0 ? Value.TRUE : Value.FALSE);
-        //expression.addBinaryOperator(">=", precedence.get("compare>=><=<"), false, (v1, v2) ->
-        //        v1.compareTo(v2) >= 0 ? Value.TRUE : Value.FALSE);
-        //expression.addBinaryOperator("<", precedence.get("compare>=><=<"), false, (v1, v2) ->
-        //        v1.compareTo(v2) < 0 ? Value.TRUE : Value.FALSE);
-        //expression.addBinaryOperator("<=", precedence.get("compare>=><=<"), false, (v1, v2) ->
-        //        v1.compareTo(v2) <= 0 ? Value.TRUE : Value.FALSE);
-        //expression.addBinaryOperator("==", precedence.get("equal==!="), false, (v1, v2) ->
-        //        v1.equals(v2) ? Value.TRUE : Value.FALSE);
-        //expression.addBinaryOperator("!=", precedence.get("equal==!="), false, (v1, v2) ->
-        //        v1.equals(v2) ? Value.FALSE : Value.TRUE);
+        expression.addBinaryOperator(">", precedence.get("compare>=><=<"), false, (v1, v2) ->
+                v1.compareTo(v2) > 0 ? Value.TRUE : Value.FALSE);
+        expression.addBinaryOperator(">=", precedence.get("compare>=><=<"), false, (v1, v2) ->
+                v1.compareTo(v2) >= 0 ? Value.TRUE : Value.FALSE);
+        expression.addBinaryOperator("<", precedence.get("compare>=><=<"), false, (v1, v2) ->
+                v1.compareTo(v2) < 0 ? Value.TRUE : Value.FALSE);
+        expression.addBinaryOperator("<=", precedence.get("compare>=><=<"), false, (v1, v2) ->
+                v1.compareTo(v2) <= 0 ? Value.TRUE : Value.FALSE);
+        expression.addBinaryOperator("==", precedence.get("equal==!="), false, (v1, v2) ->
+                v1.equals(v2) ? Value.TRUE : Value.FALSE);
+        expression.addBinaryOperator("!=", precedence.get("equal==!="), false, (v1, v2) ->
+                v1.equals(v2) ? Value.FALSE : Value.TRUE);
 
-        //expression.addLazyBinaryOperator("=", precedence.get("assign=<>"), false, (c, t, lv1, lv2) ->
-        //{
-        //    Value v1 = lv1.evalValue(c, Context.LVALUE);
-        //    Value v2 = lv2.evalValue(c);
-        //    if (v1 instanceof ListValue.ListConstructorValue && v2 instanceof ListValue)
-        //    {
-        //        List<Value> ll = ((ListValue)v1).getItems();
-        //        List<Value> rl = ((ListValue)v2).getItems();
-        //        if (ll.size() < rl.size()) throw new InternalExpressionException("Too many values to unpack");
-        //        if (ll.size() > rl.size()) throw new InternalExpressionException("Too few values to unpack");
-        //        for (Value v: ll) v.assertAssignable();
-        //        Iterator<Value> li = ll.iterator();
-        //        Iterator<Value> ri = rl.iterator();
-        //        while(li.hasNext())
-        //        {
-        //            String lname = li.next().getVariable();
-        //            Value vval = ri.next().reboundedTo(lname);
-        //            expression.setAnyVariable(c, lname, (cc, tt) -> vval);
-        //        }
-        //        return (cc, tt) -> Value.TRUE;
-        //    }
-        //    if (v1 instanceof LContainerValue)
-        //    {
-        //        ContainerValueInterface container = ((LContainerValue) v1).getContainer();
-        //        if (container == null)
-        //            return (cc, tt) -> Value.NULL;
-        //        Value address = ((LContainerValue) v1).getAddress();
-        //        if (!(container.put(address, v2))) return (cc, tt) -> Value.NULL;
-        //        return (cc, tt) -> v2;
-        //    }
-        //    v1.assertAssignable();
-        //    String varname = v1.getVariable();
-        //    Value copy = v2.reboundedTo(varname);
-        //    LazyValue boundedLHS = (cc, tt) -> copy;
-        //    expression.setAnyVariable(c, varname, boundedLHS);
-        //    return boundedLHS;
-        //});
+        expression.addBinaryOperator("=", precedence.get("assign=<>"), false, (v1, v2) ->{
+            //if (v1 instanceof ListValue.ListConstructorValue && v2 instanceof ListValue) {
+            //    List<Value> ll = ((ListValue)v1).getItems();
+            //    List<Value> rl = ((ListValue)v2).getItems();
+            //    if (ll.size() < rl.size()) throw new InternalExpressionException("Too many values to unpack");
+            //    if (ll.size() > rl.size()) throw new InternalExpressionException("Too few values to unpack");
+            //    for (Value v: ll) v.assertAssignable();
+            //    Iterator<Value> li = ll.iterator();
+            //    Iterator<Value> ri = rl.iterator();
+            //    while(li.hasNext())
+            //    {
+            //        String lname = li.next().getVariable();
+            //        Value vval = ri.next().reboundedTo(lname);
+            //        expression.setAnyVariable(c, lname, (cc, tt) -> vval);
+            //    }
+            //    return (cc, tt) -> Value.TRUE;
+            //}
+            //if (v1 instanceof LContainerValue){
+            //    ContainerValueInterface container = ((LContainerValue) v1).getContainer();
+            //    if (container == null)
+            //        return (cc, tt) -> Value.NULL;
+            //    Value address = ((LContainerValue) v1).getAddress();
+            //    if (!(container.put(address, v2))) return (cc, tt) -> Value.NULL;
+            //    return (cc, tt) -> v2;
+            //}
+            v1.assertAssignable();
+            String varname = v1.getString();
+            //Value copy = v2.reboundedTo(varname);
+            return expression.setAnyVariable(varname, v2);
+        });
 
         //expression.addLazyBinaryOperator("+=", precedence.get("assign=<>"), false, (c, t, lv1, lv2) -> {
         //    Value v1 = lv1.evalValue(c, Context.LVALUE);
@@ -196,12 +193,12 @@ public class Operators {
         //    expression.setAnyVariable(c, rvalvar, (cc, tt) -> rval);
         //    return (cc, tt) -> lval;
         //});
+        //todo add later
+        //expression.addUnaryOperator("-", precedence.get("unary+-!"), false, v -> NumericValue.asNumber(v).opposite());
+        //
+        //expression.addUnaryOperator("+", precedence.get("unary+-!"), false, NumericValue::asNumber);
 
-        //expression.addUnaryOperator("-",  false, v -> NumericValue.asNumber(v).opposite());
-
-        //expression.addUnaryOperator("+", false, NumericValue::asNumber);
-
-        //expression.addLazyUnaryOperator("!", precedence.get("unary+-!"), false, (c, t, lv)-> lv.evalValue(c, Context.BOOLEAN).getBoolean() ? (cc, tt)-> Value.FALSE : (cc, tt) -> Value.TRUE); // might need context boolean
+        expression.addUnaryOperator("!", precedence.get("unary+-!"), false, (v)->v.getBoolean()?Value.TRUE:Value.FALSE);
 
     }
 }

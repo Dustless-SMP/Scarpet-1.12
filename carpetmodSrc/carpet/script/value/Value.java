@@ -1,11 +1,18 @@
 package carpet.script.value;
 
 
-import carpet.script.Tokenizer.Token;
-import carpet.script.exception.TempException;
+import carpet.script.exception.InternalExpressionException;
 import net.minecraft.nbt.NBTBase;
 
 public abstract class Value implements Comparable<Value>, Cloneable{
+
+    public static NumericValue FALSE = new NumericValue(0);
+    public static NumericValue TRUE = new NumericValue(1);
+    public static NumericValue ZERO = FALSE;
+    public static NumericValue ONE = TRUE;
+
+    public static NullValue NULL = new NullValue();
+
     @Override
     public int compareTo(final Value o){
         //if (o instanceof NumericValue || o instanceof ListValue || o instanceof ThreadValue) todo
@@ -15,10 +22,37 @@ public abstract class Value implements Comparable<Value>, Cloneable{
         return getString().compareTo(o.getString());
     }
 
+    public Value reboundedTo(String var){
+        Value copy;
+        try {
+            copy = (Value)clone();
+        }
+        catch (CloneNotSupportedException e) {
+            // should not happen
+            e.printStackTrace();
+            throw new InternalExpressionException("Variable of type "+getTypeString()+" is not cloneable. Tell Ghoulboy (who will complain to gnembon about it), as this shoudn't happen");
+        }
+        return copy;
+    }
 
     //public Value(){} Not necessary, I think... (same for clone, idk what to put)
 
+    public void assertAssignable(){
+        assertNotNull(this);
+        //if (boundVariable == null || boundVariable.startsWith("_"))
+        //{
+        //    if (boundVariable != null)
+        //    {
+        //        throw new InternalExpressionException(boundVariable+ " cannot be assigned a new value");
+        //    }
+        //    throw new InternalExpressionException(getString()+ " is not a variable");
+        //
+        //}
+    }
+
     public abstract String getString();
+
+    public abstract String getPrettyString();
 
     public abstract String getTypeString();
 
@@ -54,18 +88,15 @@ public abstract class Value implements Comparable<Value>, Cloneable{
         return this.getString().length();
     }
 
-    public static Value fromToken(Token token){ //todo finish + figure out how scarpet does it
-
-        switch (token.type){
-            default:
-                return new StringValue(token.surface);
-        }
+    public static <T> void assertNotNull(T t){
+        if(t==null)
+            throw new InternalExpressionException("Operand may not be null");
     }
 
     public static <T> void assertNotNull(T t1, T t2){
         if (t1 == null)
-            throw new TempException("First operand may not be null");
+            throw new InternalExpressionException("First operand may not be null");
         if (t2 == null)
-            throw new TempException("Second operand may not be null");
+            throw new InternalExpressionException("Second operand may not be null");
     }
 }

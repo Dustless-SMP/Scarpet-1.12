@@ -1,10 +1,12 @@
 package carpet.script.value;
 
+import carpet.script.exception.InternalExpressionException;
 import net.minecraft.nbt.NBTBase;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.Locale;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.signum;
@@ -16,9 +18,32 @@ public class NumericValue extends Value{
     private final static double epsilon = abs(32*((7*0.1)*10-7));
     private final static MathContext displayRounding = new MathContext(12, RoundingMode.HALF_EVEN);
 
+    public static NumericValue asNumber(Value v1, String id)
+    {
+        if (!(v1 instanceof NumericValue))
+            throw new InternalExpressionException("Argument "+id+" has to be of a numeric type");
+        return ((NumericValue) v1);
+    }
+
+    public static NumericValue asNumber(Value v1)
+    {
+        if (!(v1 instanceof NumericValue))
+            throw new InternalExpressionException("Operand has to be of a numeric type");
+        return ((NumericValue) v1);
+    }
+
+    public static <T extends Number> Value of(T value)
+    {
+        if (value == null) return Value.NULL;
+        if (value.doubleValue() == value.longValue()) return new NumericValue(value.longValue());
+        if (value instanceof Float) return new NumericValue(0.000_001D * Math.round(1_000_000.0D*value.doubleValue()));
+        return new NumericValue(value.doubleValue());
+    }
+
     public NumericValue(double value){
         this.value = value;
     }
+
     private NumericValue(double value, Long longValue){
         this.value = value;
         this.longValue = longValue;
@@ -54,7 +79,27 @@ public class NumericValue extends Value{
 
     @Override
     public String getString() {
-        return null;
+        if (longValue != null){
+            return Long.toString(getLong());
+        }
+        try{
+            if (value.isInfinite()) return "INFINITY";
+            if (value.isNaN()) return "NaN";
+            if (abs(value) < epsilon) return (signum(value) < 0)?"-0":"0"; //zero rounding fails with big decimals
+            // dobules have 16 point precision, 12 is plenty to display
+            return BigDecimal.valueOf(value).round(displayRounding).stripTrailingZeros().toPlainString();
+        }
+        catch (NumberFormatException exc){
+            throw new InternalExpressionException("Incorrect number format for "+value);
+        }
+    }
+
+    @Override
+    public String getPrettyString() {
+        if (longValue!= null ||  getDouble() == (double)getLong())
+            return Long.toString(getLong());
+        else
+            return String.format(Locale.ROOT, "%.1f..", getDouble());
     }
 
     @Override

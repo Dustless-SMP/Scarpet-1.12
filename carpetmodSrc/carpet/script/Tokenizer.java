@@ -1,6 +1,6 @@
 package carpet.script;
 
-import carpet.script.exception.TempException;
+import carpet.script.exception.InternalExpressionException;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -92,7 +92,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
             linepos++;
             tok.type = Token.TokenType.STRING;
             if(pos == input.length())
-                throw new TempException("Program truncated");
+                throw new InternalExpressionException("Program truncated");
             ch = input.charAt(pos);
             while(ch !='\''){
                 if(ch=='\\'){
@@ -102,11 +102,11 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                             break;
 
                         case 't':
-                            throw new TempException("Tab character not supported");
+                            throw new InternalExpressionException("Tab character not supported");
                             //tok.append('\t'); break;
 
                         case 'r':
-                            throw new TempException("Carriage return character not supported");
+                            throw new InternalExpressionException("Carriage return character not supported");
                             //tok.append('\r'); break;
                         case '\\':
                         case '\'':
@@ -127,7 +127,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                     }
                 }
                 if(pos == input.length())
-                    throw new TempException("Program truncated");
+                    throw new InternalExpressionException("Program truncated");
                 ch = input.charAt(pos);
             }
             pos++;
@@ -199,7 +199,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                 }
                 pos++;
                 linepos++;
-                if (Expression.isAnOperator(greedyMatch))
+                if (Expression.none.isAnOperator(greedyMatch))
                 {
                     validOperatorSeenUntil = pos;
                 }
@@ -248,13 +248,12 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                     previousToken.type == Token.TokenType.STRING
                 )
             )
-            throw new TempException("'"+tok.surface +"' is not allowed after '"+previousToken.surface+"'");
+            throw new InternalExpressionException("'"+tok.surface +"' is not allowed after '"+previousToken.surface+"'");
 
         return previousToken = tok;
     }
 
-    private static boolean isSemicolon(Token tok)
-    {
+    private static boolean isSemicolon(Token tok) {
         return (    tok.type == Token.TokenType.OPERATOR && tok.surface.equals(";") )
                 || (tok.type == Token.TokenType.UNARY_OPERATOR && tok.surface.equals(";u") );
     }

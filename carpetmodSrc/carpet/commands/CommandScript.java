@@ -53,20 +53,15 @@ public class CommandScript extends CommandCarpetBase{
         String script = scriptBuilder.toString();
 
         Logger logger = Expression.LOGGER;
-        
-        logger.info("Tokenising...");
-        Tokenizer tokenizer = new Tokenizer(script);
-        while (tokenizer.hasNext()){
-            logger.info("Tokens: "+tokenizer.next());
-        }
-
-        logger.info("Tokenised successfully.\n");
 
         logger.info("Parsing Expression...");
         Expression expression = new Expression(script);
         logger.info("Parsed script, printing RPN...");
         for(Tokenizer.Token tok: expression.rpn)
             logger.info("Token: "+tok.toString());
-        logger.info("Finished printing tokens!");
+        logger.info("Finished printing RPN!");
+        logger.info("Printing final answer...");
+        logger.info(expression.evalValue.getString());
+        logger.info("\n\n\n");
     }
 }

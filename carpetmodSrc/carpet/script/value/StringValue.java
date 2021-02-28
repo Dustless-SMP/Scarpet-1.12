@@ -15,6 +15,11 @@ public class StringValue extends Value{
     }
 
     @Override
+    public String getPrettyString() {
+        return str;
+    }
+
+    @Override
     public boolean getBoolean() {
         return str != null && !str.isEmpty();
     }
