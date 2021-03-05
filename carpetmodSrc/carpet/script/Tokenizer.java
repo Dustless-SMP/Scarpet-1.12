@@ -78,9 +78,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                     || (ch == minusSign && tok.length() > 0
                     && ('e' == tok.surface.charAt(tok.length() - 1)
                     || 'E' == tok.surface.charAt(tok.length() - 1)))
-                    || (ch == '+' && tok.length() > 0
-                    && ('e' == tok.surface.charAt(tok.length() - 1)
-                    || 'E' == tok.surface.charAt(tok.length() - 1))))
+                    )
                     && (pos < input.length())) {
                 tok.append(input.charAt(pos++));
                 linepos++;
@@ -203,7 +201,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                 {
                     validOperatorSeenUntil = pos;
                 }
-                ch = pos == input.length() ? 0 : input.charAt(pos);
+                ch = pos == input.length() ? 0 : input  .charAt(pos);
             }
             if (newLinesMarkers && "$".equals(greedyMatch)){
                 lineno++;

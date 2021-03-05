@@ -2,6 +2,7 @@ package carpet.script.value;
 
 import carpet.script.exception.InternalExpressionException;
 import net.minecraft.nbt.NBTBase;
+import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -75,6 +76,56 @@ public class NumericValue extends Value{
 
     public long getLong(){
         return this.longValue;
+    }
+
+    @Override
+    public Value add(Value v){
+        if (v instanceof NumericValue)
+        {
+            NumericValue nv = (NumericValue)v;
+            if (longValue != null && nv.longValue != null)
+            {
+                return new NumericValue(longValue+nv.longValue);
+            }
+            return new NumericValue(value + nv.value);
+        }
+        return super.add(v);
+    }
+
+    public Value subtract(Value v) {
+        if (v instanceof NumericValue)
+        {
+            NumericValue nv = (NumericValue)v;
+            if (longValue != null && nv.longValue != null)
+            {
+                return new NumericValue(longValue-nv.longValue);
+            }
+            return new NumericValue(value - nv.value);
+        }
+        return super.subtract(v);
+    }
+
+    public Value multiply(Value v) {
+        if (v instanceof NumericValue)
+        {
+            NumericValue nv = (NumericValue)v;
+            if (longValue != null && nv.longValue != null)
+            {
+                return new NumericValue(longValue*nv.longValue);
+            }
+            return new NumericValue(value * nv.value);
+        }
+        //if (v instanceof ListValue){ todo
+        //    return v.multiply(this);
+        //}
+        return new StringValue(StringUtils.repeat(v.getString(), (int) getLong()));
+    }
+
+    public Value divide(Value v) {
+        if (v instanceof NumericValue){
+            return new NumericValue(getDouble() / ((NumericValue) v).getDouble() );
+        }
+        return super.divide(v);
     }
 
     @Override

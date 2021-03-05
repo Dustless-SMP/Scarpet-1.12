@@ -1,6 +1,5 @@
 package carpet.commands;
 
-import carpet.CarpetSettings;
 import carpet.script.Expression;
 import carpet.script.Tokenizer;
 import net.minecraft.command.CommandException;
@@ -13,6 +12,14 @@ import java.util.Arrays;
 import java.util.List;
 
 public class CommandScript extends CommandCarpetBase{
+
+
+    static{
+        String expression = "1+2";
+        Expression expr = new Expression(expression);
+
+        Expression.LOGGER.info("Scarpet evaluation of "+expression + ": " +expr.evalValue.getString());
+    }
 
     /**
      * Gets the name of the command
@@ -37,7 +44,7 @@ public class CommandScript extends CommandCarpetBase{
      *
      * @param server
      * @param sender
-     * @param args
+     * @param args Basically the script, in scarpet format.
      */
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
@@ -48,20 +55,12 @@ public class CommandScript extends CommandCarpetBase{
         List<String> scriptList = Arrays.asList(args);
         StringBuilder scriptBuilder = new StringBuilder();
 
-        scriptList.listIterator(1).forEachRemaining(scriptBuilder::append);
+        scriptList.listIterator(1).forEachRemaining(scriptBuilder::append); // removing 'run' bit
 
         String script = scriptBuilder.toString();
 
         Logger logger = Expression.LOGGER;
-
-        logger.info("Parsing Expression...");
         Expression expression = new Expression(script);
-        logger.info("Parsed script, printing RPN...");
-        for(Tokenizer.Token tok: expression.rpn)
-            logger.info("Token: "+tok.toString());
-        logger.info("Finished printing RPN!");
-        logger.info("Printing final answer...");
         logger.info(expression.evalValue.getString());
-        logger.info("\n\n\n");
     }
 }
