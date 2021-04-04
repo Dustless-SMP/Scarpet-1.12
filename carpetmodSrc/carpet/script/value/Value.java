@@ -13,6 +13,16 @@ public abstract class Value implements Comparable<Value>, Cloneable{
 
     public static NullValue NULL = new NullValue();
 
+    public static Value PARAMS_START = null; //This helps to figure out when the start of the parameters of a function. No other use rly
+
+    public static final NumericValue PI = new NumericValue(
+            "3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"
+    );
+
+    public static final Value euler = new NumericValue(
+            "2.71828182845904523536028747135266249775724709369995957496696762772407663"
+    );
+
     @Override
     public int compareTo(final Value o){
         //if (o instanceof NumericValue || o instanceof ListValue || o instanceof ThreadValue) todo

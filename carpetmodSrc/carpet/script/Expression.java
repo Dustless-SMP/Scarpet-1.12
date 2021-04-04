@@ -10,10 +10,9 @@ import org.apache.logging.log4j.Logger;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
@@ -24,7 +23,7 @@ public class Expression {
 
     public static final Logger LOGGER = LogManager.getLogger("[SCARPET]");
 
-    public static final Expression none = new Expression("null");
+    public static final Expression none = new Expression("null", false, false);
 
     public Map<String, Fluff.Operator> operators = new HashMap<>();
     public boolean isAnOperator(String s){
@@ -64,17 +63,22 @@ public class Expression {
 
 
     public String expression;
-    public List<Tokenizer.Token> rpn = new ArrayList<>(); // this is after shunting the yard (so with call to shuntingYard()
+    public Value ast;
     public Value evalValue;
 
-    public Expression(String expression){
+    public boolean allowComments;
+    public boolean allowNewLineMarkers;
+
+    public Expression(String expression, boolean comments, boolean newLineMarkers){
+
+        allowComments = comments;
+        allowNewLineMarkers = newLineMarkers;
 
         Operators.apply(this); //now I get wtf this means!
         //todo rest of functions/operators here before evaluation
 
-
-        this.expression = expression.replaceAll("\\r\\n?", "\n").replaceAll("\\t","   ");
-        this.rpn = shuntingYard();
+        //actually running it
+        this.expression = expression;
         this.evalValue = evaluate();
     }
 
@@ -84,7 +88,7 @@ public class Expression {
         Stack<Tokenizer.Token> stack = new Stack<>();
 
 
-        Tokenizer tokenizer = new Tokenizer(this.expression);
+        Tokenizer tokenizer = new Tokenizer(this, expression, allowComments, allowNewLineMarkers);
         List<Tokenizer.Token> cleanedTokens = tokenizer.postProcess(); //to get rid of comments (not implemented yet), excess semicolons and $ signs for new lines.
         Tokenizer.Token lastFunction = null; // todo once I implement the basic maths parser
         Tokenizer.Token previousToken = null;
@@ -103,17 +107,14 @@ public class Expression {
                     outputQueue.add(token);
                     break;
                 case FUNC://not checking properly here incase were assigning
-                    outputQueue.add(token);
-
                     stack.push(token);
-
                     lastFunction = token;
                     break;
                 case COMMA:
                     if(previousToken != null && previousToken.type == Tokenizer.Token.TokenType.OPERATOR)
                         throw new InternalExpressionException("Missing parameter(s) for operator '" + previousToken.surface +"'");
 
-                    while(!stack.isEmpty() && stack.peek().type != Tokenizer.Token.TokenType.LPAR)
+                    while(!stack.isEmpty() && stack.peek().type != Tokenizer.Token.TokenType.OPEN_PAR)
                         outputQueue.add(stack.pop());
 
                     if(stack.isEmpty()){
@@ -123,43 +124,69 @@ public class Expression {
                             throw new InternalExpressionException("Parse error for function " + lastFunction.surface);
                     }
                     break;
-                case OPERATOR:
-                case UNARY_OPERATOR:
-                    if (previousToken != null && (previousToken.type == Tokenizer.Token.TokenType.COMMA || previousToken.type == Tokenizer.Token.TokenType.LPAR))
-                        throw new InternalExpressionException("Missing parameter(s) for operator '" + token.surface +"'");
+                case OPERATOR: {
+                    if (previousToken != null
+                            && (previousToken.type == Tokenizer.Token.TokenType.COMMA || previousToken.type == Tokenizer.Token.TokenType.OPEN_PAR)) {
+                        throw new InternalExpressionException("Missing parameter(s) for operator '" + token + "'");
+                    }
+                    Fluff.Operator o1 = operators.get(token.surface);
+                    if (o1 == null)
+                        throw new InternalExpressionException("Unknown operator '" + token + "'");
 
-                    Fluff.Operator o = operators.getOrDefault(token.surface, null);
-                    if(o == null)
-                        throw new InternalExpressionException("Unknown operator '" + token.surface + "'");
+                    shuntOperators(outputQueue, stack, o1);
+                    stack.push(token);
+                    break;
+                }
 
-                    Tokenizer.Token nextToken = stack.isEmpty() ? null : stack.peek();
+                case UNARY_OPERATOR: {
+                    if (previousToken != null && previousToken.type != Tokenizer.Token.TokenType.OPERATOR
+                            && previousToken.type != Tokenizer.Token.TokenType.COMMA && previousToken.type != Tokenizer.Token.TokenType.OPEN_PAR)
+                        throw new InternalExpressionException("Invalid position for unary operator " + token);
 
-                    while(nextToken!= null &&
-                            (nextToken.type == Tokenizer.Token.TokenType.OPERATOR || nextToken.type == Tokenizer.Token.TokenType.UNARY_OPERATOR) &&
-                            ((o.isLeftAssoc() && o.getPrecedence() <= operators.get(nextToken.surface).getPrecedence()) || (o.getPrecedence() < operators.get(nextToken.surface).getPrecedence()))
-                        ){
-                        outputQueue.add(stack.pop());
-                        nextToken = stack.isEmpty() ? null : stack.peek();
+                    Fluff.Operator o1 = operators.get(token.surface);
+                    if (o1 == null)
+                        throw new InternalExpressionException("Unknown unary operator '" + token.surface.substring(0, token.surface.length() - 1) + "'");
+
+                    shuntOperators(outputQueue, stack, o1);
+                    stack.push(token);
+                    break;
+                }
+
+                case OPEN_PAR:
+                    if (previousToken != null) {
+                        if (previousToken.type == Tokenizer.Token.TokenType.NUM || previousToken.type == Tokenizer.Token.TokenType.CLOSE_PAR
+                                || previousToken.type == Tokenizer.Token.TokenType.VAR
+                                || previousToken.type == Tokenizer.Token.TokenType.HEX_NUM) {
+                            // Implicit multiplication, e.g. 23(a+b) or (a+b)(a-b)
+                            Tokenizer.Token multiplication = new Tokenizer.Token();
+                            multiplication.append("*");
+                            multiplication.type = Tokenizer.Token.TokenType.OPERATOR;
+                            stack.push(multiplication);
+                        }
+                        // if the ( is preceded by a valid function, then it
+                        // denotes the start of a parameter list
+                        if (previousToken.type == Tokenizer.Token.TokenType.FUNC)
+                            outputQueue.add(token);
+
                     }
                     stack.push(token);
                     break;
 
-                case LPAR:
-                    stack.push(token);
-                    break;
+                case CLOSE_PAR:
+                    if (previousToken != null && previousToken.type == Tokenizer.Token.TokenType.OPERATOR)
+                        throw new InternalExpressionException("Missing parameter(s) for operator " + previousToken);
 
-                case RPAR:
-                    Tokenizer.Token lastParen = stack.isEmpty()? null : stack.peek();
-
-                    while(lastParen!=null && lastParen.type != Tokenizer.Token.TokenType.LPAR){
+                    while (!stack.isEmpty() && stack.peek().type != Tokenizer.Token.TokenType.OPEN_PAR)
                         outputQueue.add(stack.pop());
-                        lastParen = stack.isEmpty() ? null : stack.peek();
-                    }
 
-                    if(lastParen == null)
+                    if (stack.isEmpty())
                         throw new InternalExpressionException("Mismatched parentheses");
-                    stack.pop(); // discarding the pair of brackets, but only after checking that there are no excess right parentheses, in which case we oops.
-                    break;
+
+                    stack.pop();
+                    if (!stack.isEmpty() && stack.peek().type == Tokenizer.Token.TokenType.FUNC)
+                    {
+                        outputQueue.add(stack.pop());
+                    }
 
                 default:
                     break;
@@ -167,90 +194,169 @@ public class Expression {
             if (token.type != Tokenizer.Token.TokenType.MARKER) previousToken = token;
         }
 
-        while(!stack.isEmpty()){
-            outputQueue.add(stack.pop());
+        while (!stack.isEmpty()) {
+            Tokenizer.Token element = stack.pop();
+            if (element.type == Tokenizer.Token.TokenType.OPEN_PAR || element.type == Tokenizer.Token.TokenType.CLOSE_PAR)
+                throw new InternalExpressionException("Mismatched parentheses");
+
+            outputQueue.add(element);
         }
 
         return outputQueue;
     }
 
-    /**
-     * This is the method which evaluates the RPN expression returned by {@code shuntingYard()} method.
-     * It works very simply: At this stage, there are only literals(strings and numbers), functions (unimplemented),
-     * variables and operators (which for all intents and purposes I can treat as fancy functions as well). So when I am
-     * running through, I push all literals onto the stack. Then when I see a function, I look at the stack to give it
-     * its arguments (how many ever it needs). I can then send those to the function to be evaluated (and throw appropriate
-     * errors), and put the output onto the stack(cos its gonna be a literal). Then I just continue, and at the end, I
-     * have one item on the stack, and that's my final answer, which I can output to the player/user.
-     */
+    private void shuntOperators(List<Tokenizer.Token> outputQueue, Stack<Tokenizer.Token> stack, Fluff.Operator o1){
+        Tokenizer.Token nextToken = stack.isEmpty() ? null : stack.peek();
+        while (nextToken != null
+                && (nextToken.type == Tokenizer.Token.TokenType.OPERATOR
+                || nextToken.type == Tokenizer.Token.TokenType.UNARY_OPERATOR)
+                && ((o1.isLeftAssoc() && o1.getPrecedence() <= operators.get(nextToken.surface).getPrecedence())
+                || (o1.getPrecedence() < operators.get(nextToken.surface).getPrecedence()))){
+            outputQueue.add(stack.pop());
+            nextToken = stack.isEmpty() ? null : stack.peek();
+        }
+    }
 
-    private Value evaluate(){
+
+    private Value getAST(){
         Stack<Value> stack = new Stack<>();
+        List<Tokenizer.Token> rpn = shuntingYard();
 
-        //To push arguments for functions, let's see if it works...
-
-        for(Tokenizer.Token token: this.rpn){
+        validate(rpn);
+        for(final Tokenizer.Token token : rpn){
             switch (token.type){
-                case STRING:
-                    StringValue stringValue = new StringValue(token.surface);
-
-                    stack.push(stringValue);
-                    break;
-                case NUM:
-                    NumericValue numVal;
-                    try{
-                        numVal = new NumericValue(token.surface);
-                    } catch (NumberFormatException nfe) {
-                        throw new InternalExpressionException("Not a Number");
-                    }
-                    stack.push(numVal);
-                    break;
-
-                case HEX_NUM:
-                    NumericValue hexVal = new NumericValue(new BigInteger(token.surface.substring(2), 16).doubleValue());
-                    stack.push(hexVal);
-                    break;
-
-                case VAR: //If variable is undefined, set to 0 default value, if not get its value
-                    stack.push(getOrSetAnyVariable(token.surface));
-                    break;
-
-                case UNARY_OPERATOR: {
+                case UNARY_OPERATOR:{
                     final Value value = stack.pop();
                     Value result = operators.get(token.surface).apply(value);
                     stack.push(result);
                     break;
                 }
-
                 case OPERATOR:
-                    Value value2 = stack.pop(); //cos second value is inputted last
-                    Value value1 = stack.pop();
-
-                    Fluff.Operator o = operators.get(token.surface);
-                    LOGGER.info(o.getSurface());
-                    Value result = o.apply(value1, value2);
+                    final Value v1 = stack.pop();
+                    final Value v2 = stack.pop();
+                    Value result = operators.get(token.surface).apply(v1, v2);
                     stack.push(result);
                     break;
 
-                case LPAR: //todo figure this out (if its at all necessary)
-                    //functionDepth++;
-                    //break;
-
-                case FUNC:
-                    //if(!isAFunction(token.surface)) //todo function definitions
-                    //    throw new InternalExpressionException("Invalid function '"+token.surface+"'");
-
-                    LOGGER.error("Unsupported operation (so far) (Attempted to parse '"+token.type.name()+"')");
-
-
+                case VAR:
+                    stack.push(getOrSetAnyVariable(token.surface));
                     break;
 
-                default:
-                    throw new InternalExpressionException("How is this token even here? "+token.toString());
-            }
+                case FUNC:
+                    String name = token.surface.toLowerCase(Locale.ROOT);
+                    Fluff.Functions f;
+                    ArrayList<Value> p;
+                    boolean isKnown = functions.containsKey(name);
+                    if(isKnown){
+                        f = functions.get(name);
+                        p = new ArrayList<>(!f.numParamsVaries() ? f.getNumParams() : 0);
+                    } else { //potentially unknown function or perhaps a declaration
+                        f = functions.get(".");
+                        p = new ArrayList<>();
+                    }
+                    //pop parameters off the stack until we hit the start of this function's parameter list
+                    while(!stack.isEmpty() && stack.peek()!= Value.PARAMS_START)
+                        p.add(0, stack.pop());
 
+                    if(!isKnown) p.add(new StringValue(name));
+
+                    if(stack.peek() == Value.PARAMS_START)
+                        stack.pop();
+
+                    stack.push(f.apply(p));
+                    break;
+
+                case OPEN_PAR:
+                    stack.push(Value.PARAMS_START);
+                     break;
+                case NUM:
+                    try{
+                        stack.push(new NumericValue(token.surface));
+                    }
+                    catch (NumberFormatException exception) {
+                        throw new InternalExpressionException("Not a number");
+                    }
+                    break;
+
+                case STRING:
+                    stack.push(new StringValue(token.surface)); // was originally null
+                    break;
+                case HEX_NUM:
+                    stack.push(new NumericValue(new BigInteger(token.surface.substring(2), 16).doubleValue()));
+                    break;
+                default:
+                    throw new InternalExpressionException("Unexpected token '" + token.surface + "'");
+            }
         }
         return stack.pop();
+    }
+
+    /**
+     * Thanks to Norman Ramsey:
+     * <a href="http://stackoverflow.com/questions/789847/postfix-notation-validation">Postfix Notation Validation</a>
+     */
+
+    private void validate(List<Tokenizer.Token> rpn) {
+
+        // each push on to this stack is a new function scope, with the value of
+        // each
+        // layer on the stack being the count of the number of parameters in
+        // that scope
+        Stack<Integer> stack = new Stack<>();
+
+        // push the 'global' scope
+        stack.push(0);
+
+        for (final Tokenizer.Token token : rpn) {
+            switch (token.type) {
+                case UNARY_OPERATOR:
+                    if (stack.peek() < 1)
+                    {
+                        throw new InternalExpressionException("Missing parameter(s) for operator " + token);
+                    }
+                    break;
+                case OPERATOR:
+                    if (stack.peek() < 2){
+                        if (token.surface.equalsIgnoreCase(";"))
+                            throw new InternalExpressionException("Unnecessary semicolon");
+
+                        throw new InternalExpressionException("Missing parameter(s) for operator " + token);
+                    }
+                    // pop the operator's 2 parameters and add the result
+                    stack.set(stack.size() - 1, stack.peek() - 2 + 1);
+                    break;
+                case FUNC:
+                    Fluff.Functions f = functions.get(token.surface.toLowerCase(Locale.ROOT));// don't validate global - userdef functions
+                    int numParams = stack.pop();
+                    if (f != null && !f.numParamsVaries() && numParams != f.getNumParams())
+                        throw new InternalExpressionException("Function " + token + " expected " + f.getNumParams() + " parameters, got " + numParams);
+
+                    if (stack.size() <= 0)
+                        throw new InternalExpressionException("Too many function calls, maximum scope exceeded");
+
+                    // push the result of the function
+                    stack.set(stack.size() - 1, stack.peek() + 1);
+                    break;
+                case OPEN_PAR:
+                    stack.push(0);
+                    break;
+                default:
+                    stack.set(stack.size() - 1, stack.peek() + 1);
+            }
+        }
+
+        if (stack.size() > 1)
+            throw new InternalExpressionException("Too many unhandled function parameter lists");
+        else if (stack.peek() > 1)
+            throw new InternalExpressionException("Too many numbers or variables");
+        else if (stack.peek() < 1)
+            throw new InternalExpressionException("Empty expression");
+    }
+
+    private Value evaluate(){
+        if(this.ast==null)
+            this.ast = getAST();
+        return this.ast;
     }
 
     public void addBinaryOperator(String surface, int precedence, boolean leftAssoc, BiFunction<Value, Value, Value> fun) {

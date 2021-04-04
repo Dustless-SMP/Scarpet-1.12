@@ -79,7 +79,7 @@ public abstract class Fluff {
         public Functions(String name, int arguments, Function<List<Value>, Value> function) {
             this.name = name;
             this.arguments = arguments;
-            this.varArgs = arguments==-1; //only for built-in functions for now
+            this.varArgs = arguments==-1; //cos it's easier this way
             this.minArgs = 0; // cos it's defined differently for different functions
             this.function = function;
         }
@@ -90,6 +90,14 @@ public abstract class Fluff {
             this.varArgs = varArgs; //for user-defined functions which can have variable arguments
             this.minArgs = minArgs; //cos you can have func(a, b, ...c) -> etc., so it needs at leas 2 args
             this.function = function;
+        }
+
+        public int getNumParams(){
+            return minArgs;
+        }
+
+        public boolean numParamsVaries(){
+            return varArgs;
         }
 
         public Value apply(List<Value> lv){

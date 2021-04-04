@@ -19,12 +19,16 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
     private int pos = 0;
     private int linepos = 0;
     private int lineno = 0;
+    private Expression expression;
     private boolean comments = false; // only works in file, always false for now todo change
     private boolean newLinesMarkers = true; //cos only got commands for the time being todo change
     private Token previousToken;
 
-    public Tokenizer(String input) {
+    public Tokenizer(Expression expr, String input, boolean allowComments, boolean allowNewLineMakers) {
         this.input = input;
+        this.expression = expr;
+        this.comments = allowComments;
+        this.newLinesMarkers = allowNewLineMakers;
     }
 
     private char peekNextChar(){
@@ -153,10 +157,10 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
         } else if(ch =='(' || ch ==')' || ch==',' || ch=='[' || ch==']' || ch == '{' || ch == '}'){
             switch (ch){
                 case '(':
-                    tok.type = Token.TokenType.LPAR;
+                    tok.type = Token.TokenType.OPEN_PAR;
                     break;
                 case ')':
-                    tok.type = Token.TokenType.RPAR;
+                    tok.type = Token.TokenType.CLOSE_PAR;
                     break;
                 case ',':
                     tok.type = Token.TokenType.COMMA;
@@ -220,7 +224,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
             }
 
             if (previousToken == null || previousToken.type == Token.TokenType.OPERATOR
-                    || previousToken.type == Token.TokenType.LPAR || previousToken.type == Token.TokenType.COMMA
+                    || previousToken.type == Token.TokenType.OPEN_PAR || previousToken.type == Token.TokenType.COMMA
                     || (previousToken.type == Token.TokenType.MARKER && ( previousToken.surface.equals("{") || previousToken.surface.equals("[") ) )
             ) {
                 tok.surface += "u";
@@ -241,7 +245,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
                     previousToken.type == Token.TokenType.VAR ||
                     previousToken.type == Token.TokenType.FUNC ||
                     previousToken.type == Token.TokenType.NUM ||
-                    previousToken.type == Token.TokenType.RPAR ||
+                    previousToken.type == Token.TokenType.CLOSE_PAR ||
                     ( previousToken.type == Token.TokenType.MARKER && ( previousToken.surface.equalsIgnoreCase("}") || previousToken.surface.equalsIgnoreCase("]"))) ||
                     previousToken.type == Token.TokenType.STRING
                 )
@@ -270,7 +274,7 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
             //if (current.type == Token.TokenType.MARKER && current.surface.startsWith("//"))
             //    continue;
 
-            if(!isSemicolon(current) || (last!=null && last.type != Token.TokenType.RPAR && last.type != Token.TokenType.COMMA && !isSemicolon(last))){
+            if(!isSemicolon(current) || (last!=null && last.type != Token.TokenType.CLOSE_PAR && last.type != Token.TokenType.COMMA && !isSemicolon(last))){
                 if (isSemicolon(current)){ //idrk why this is necessary, just copied from gnembons code...
                     current.surface = ";";
                     current.type = Token.TokenType.OPERATOR;
@@ -307,8 +311,8 @@ public class Tokenizer implements Iterator<Tokenizer.Token> {
     public static class Token {
 
         public enum TokenType {
-            LPAR, RPAR, FUNC, OPERATOR, UNARY_OPERATOR, COMMA,
-            NUM, HEX_NUM, STRING, VAR, MARKER,
+            OPEN_PAR, CLOSE_PAR, FUNC, OPERATOR, UNARY_OPERATOR, COMMA,
+            NUM, HEX_NUM, STRING, VAR, MARKER,//idk why nums are called literals, to me nums are nums
         }
 
         public String surface = "";
