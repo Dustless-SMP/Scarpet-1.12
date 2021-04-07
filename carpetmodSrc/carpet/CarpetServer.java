@@ -5,6 +5,7 @@ import carpet.network.PluginChannelManager;
 import carpet.network.ToggleableChannelHandler;
 import carpet.patches.EntityPlayerMPFake;
 import carpet.pubsub.*;
+import carpet.script.CarpetScriptServer;
 import carpet.utils.*;
 import carpet.worldedit.WorldEditBridge;
 
@@ -31,6 +32,7 @@ public class CarpetServer // static for now - easier to handle all around the co
     public static final PubSubMessenger PUBSUB_MESSENGER = new PubSubMessenger(PUBSUB);
 
     public static MinecraftServer minecraft_server;
+    public static CarpetScriptServer scriptServer;
     public static PluginChannelManager pluginChannels;
     public static RSMMServer rsmmServer;
     public static ToggleableChannelHandler rsmmChannel;

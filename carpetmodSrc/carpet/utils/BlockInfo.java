@@ -43,7 +43,7 @@ public class BlockInfo
         return "Something new";
     }
 
-    private static String getMapColourName(MapColor colour)
+    public static String getMapColourName(MapColor colour)
     {
         if (colour == MapColor.AIR        ) { return "AIR"        ; }
         if (colour == MapColor.GRASS      ) { return "GRASS"      ; }
@@ -84,7 +84,7 @@ public class BlockInfo
         return "Something new";
     }
 
-    private static String getMaterialName(Material material)
+    public static String getMaterialName(Material material)
     {
         if (material == Material.AIR             ) { return "AIR"            ; }
         if (material == Material.GRASS           ) { return "GRASS"          ; }

@@ -1,13 +1,13 @@
 package carpet.script;
 
+import carpet.script.exception.ExpressionException;
 import carpet.script.value.Value;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
-public abstract class Fluff {
-
+public abstract class Fluff
+{
     @FunctionalInterface
     public interface TriFunction<A, B, C, R> { R apply(A a, B b, C c); }
 
@@ -26,83 +26,167 @@ public abstract class Fluff {
     @FunctionalInterface
     public interface SexFunction<A, B, C, D, E, F, R> { R apply(A a, B b, C c, D d, E e, F f);}
 
-    public static class Operator {
-        private final int precedence;
-        private final int arguments;
-        private final boolean isLeftAssoc;
-        private final String surface;
-        private Function<List<Value>, Value> fun;
+    public interface ILazyFunction
+    {
+        int getNumParams();
+
+        boolean numParamsVaries();
+
+        LazyValue lazyEval(Context c, Integer type, Expression expr, Tokenizer.Token token, List<LazyValue> lazyParams);
+        // lazy function has a chance to change execution based on contxt
+    }
+
+    public interface IFunction extends ILazyFunction
+    {
+        Value eval(List<Value> parameters);
+    }
+
+    public interface ILazyOperator
+    {
+        int getPrecedence();
+
+        boolean isLeftAssoc();
+
+        LazyValue lazyEval(Context c, Integer type, Expression e, Tokenizer.Token t, LazyValue v1, LazyValue v2);
+    }
+
+    public interface IOperator extends ILazyOperator
+    {
+        Value eval(Value v1, Value v2);
+    }
+
+    public abstract static class AbstractLazyFunction implements ILazyFunction
+    {
+        protected String name;
+        int numParams;
+
+        AbstractLazyFunction(int numParams)
+        {
+            this.numParams = numParams;
+        }
 
 
-        Operator(String surface, int precedence, int args, boolean isLeftAssoc, Function<List<Value>, Value> fun){
+        public String getName() {
+            return name;
+        }
+
+        public int getNumParams() {
+            return numParams;
+        }
+
+        public boolean numParamsVaries() {
+            return numParams < 0;
+        }
+    }
+
+    public abstract static class AbstractFunction extends AbstractLazyFunction implements IFunction
+    {
+        AbstractFunction(int numParams) {
+            super(numParams);
+        }
+
+        @Override
+        public LazyValue lazyEval(Context cc, Integer type, Expression e, Tokenizer.Token t, final List<LazyValue> lazyParams)
+        {
+            try
+            {
+                return new LazyValue()
+                { // eager evaluation always ignores the required type and evals params by none default
+                    private List<Value> params;
+
+                    public Value evalValue(Context c, Integer type) {
+                        return AbstractFunction.this.eval(getParams(c));
+                    }
+
+                    private List<Value> getParams(Context c) {
+                        if (params == null) {
+                            params = new ArrayList<>();
+                            for (LazyValue lazyParam : lazyParams) {
+                                params.add(lazyParam.evalValue(c)); // none type default by design
+                            }
+                        }
+                        return params;
+                    }
+                };
+            }
+            catch (RuntimeException exc)
+            {
+                throw Expression.handleCodeException(cc, exc, e, t);
+            }
+        }
+    }
+
+    public abstract static class AbstractLazyOperator implements ILazyOperator
+    {
+        int precedence;
+
+        boolean leftAssoc;
+
+        AbstractLazyOperator(int precedence, boolean leftAssoc) {
             this.precedence = precedence;
-            this.arguments = args;
-            this.surface = surface;
-            this.isLeftAssoc = isLeftAssoc;
-            this.fun = fun;
+            this.leftAssoc = leftAssoc;
         }
 
-        public int getPrecedence(){
-            return this.precedence;
+        public int getPrecedence() {
+            return precedence;
         }
 
-        public int getArguments(){
-            return this.arguments;
-        }
-
-        public String getSurface(){
-            return this.surface;
-        }
-
-        public boolean isLeftAssoc(){
-            return this.isLeftAssoc;
-        }
-
-        public Value apply(List<Value> args){
-            return fun.apply(args);
-        }
-
-        public Value apply(Value ... args){
-            return fun.apply(Arrays.asList(args));
+        public boolean isLeftAssoc() {
+            return leftAssoc;
         }
 
     }
 
-    public static class Functions{ //Not to confuse with Function class
+    public abstract static class AbstractOperator extends AbstractLazyOperator implements IOperator
+    {
 
-        public final String name;
-        public final int arguments;
-        private final Function<List<Value>, Value> function;
-        public final boolean varArgs;
-        public final int minArgs;
-
-        public Functions(String name, int arguments, Function<List<Value>, Value> function) {
-            this.name = name;
-            this.arguments = arguments;
-            this.varArgs = arguments==-1; //cos it's easier this way
-            this.minArgs = 0; // cos it's defined differently for different functions
-            this.function = function;
+        AbstractOperator(int precedence, boolean leftAssoc) {
+            super(precedence, leftAssoc);
         }
 
-        public Functions(String name, int arguments, int minArgs,boolean varArgs, Function<List<Value>, Value> function) {
-            this.name = name;
-            this.arguments = arguments;
-            this.varArgs = varArgs; //for user-defined functions which can have variable arguments
-            this.minArgs = minArgs; //cos you can have func(a, b, ...c) -> etc., so it needs at leas 2 args
-            this.function = function;
-        }
-
-        public int getNumParams(){
-            return minArgs;
-        }
-
-        public boolean numParamsVaries(){
-            return varArgs;
-        }
-
-        public Value apply(List<Value> lv){
-            return function.apply(lv);
+        @Override
+        public LazyValue lazyEval(Context cc, Integer type, Expression e, Tokenizer.Token t, final LazyValue v1, final LazyValue v2)
+        {
+            try
+            {
+                return (c, type_ignored) -> AbstractOperator.this.eval(v1.evalValue(c, Context.NONE), v2.evalValue(c, Context.NONE));
+            }
+            catch (RuntimeException exc)
+            {
+                throw Expression.handleCodeException(cc, exc, e, t);
+            }
         }
     }
 
+    public abstract static class AbstractUnaryOperator extends AbstractOperator
+    {
+        AbstractUnaryOperator(int precedence, boolean leftAssoc) {
+            super(precedence, leftAssoc);
+        }
+
+        @Override
+        public LazyValue lazyEval(Context cc, Integer type, Expression e, Tokenizer.Token t, final LazyValue v1, final LazyValue v2)
+        {
+            try
+            {
+                if (v2 != null)
+                {
+                    throw new ExpressionException(cc, e, t, "Did not expect a second parameter for unary operator");
+                }
+                return (c, ignored_type) -> AbstractUnaryOperator.this.evalUnary(v1.evalValue(c));
+            }
+            catch (RuntimeException exc)
+            {
+                throw Expression.handleCodeException(cc, exc, e, t);
+            }
+        }
+
+        @Override
+        public Value eval(Value v1, Value v2)
+        {
+            throw new RuntimeException("Shouldn't end up here");
+        }
+
+        public abstract Value evalUnary(Value v1);
+    }
 }

@@ -4,10 +4,11 @@ import java.util.ArrayList;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
-import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagString;
 
 public class NullValue extends NumericValue // TODO check nonsingleton code
 {
+    public static final NullValue NULL = new NullValue();
     @Override
     public String getString()
     {
@@ -31,7 +32,7 @@ public class NullValue extends NumericValue // TODO check nonsingleton code
     {
         return new NullValue();
     }
-    public NullValue() {super(0.0D);}
+    private NullValue() {super(false);}
 
     @Override
     public boolean equals(final Object o)
@@ -39,10 +40,10 @@ public class NullValue extends NumericValue // TODO check nonsingleton code
         return o instanceof NullValue;
     }
 
-    //@Override
-    //public Value slice(long fromDesc, Long toDesc) {
-    //    return Value.NULL;
-    //}
+    @Override
+    public Value slice(long fromDesc, Long toDesc) {
+        return Value.NULL;
+    }
 
     @Override
     public NumericValue opposite() {
@@ -60,10 +61,10 @@ public class NullValue extends NumericValue // TODO check nonsingleton code
         return  o instanceof NullValue ? 0 : -1;
     }
 
-    //@Override
-    //public Value in(Value value) {
-    //    return Value.NULL;
-    //}
+    @Override
+    public Value in(Value value) {
+        return Value.NULL;
+    }
 
     @Override
     public String getTypeString()
@@ -77,25 +78,26 @@ public class NullValue extends NumericValue // TODO check nonsingleton code
         return 0;
     }
 
-    //@Override
-    //public NBTBase toTag(boolean force){
-    //    if (!force) throw new NBTSerializableValue.IncompatibleTypeException(this);
-    //    return StringTag.of("null");
-    //}
+    @Override
+    public NBTTagString toTag(boolean force)
+    {
+        if (!force) throw new NBTSerializableValue.IncompatibleTypeException(this);
+        return new NBTTagString("null");
+    }
 
-    //@Override
-    //public Value split(Value delimiter) {
-    //    return ListValue.wrap(new ArrayList<Value>());
-    //}
+    @Override
+    public Value split(Value delimiter) {
+    	return ListValue.wrap(new ArrayList<Value>());
+    }
 
-    //@Override
-    //public JsonElement toJson()
-    //{
-    //    return JsonNull.INSTANCE;
-    //}
+    @Override
+    public JsonElement toJson()
+    {
+        return JsonNull.INSTANCE;
+    }
 
-    //@Override
-    //public boolean isNull() {
-    //    return true;
-    //}
+    @Override
+    public boolean isNull() {
+        return true;
+    }
 }
