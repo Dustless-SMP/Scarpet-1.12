@@ -4,8 +4,7 @@ infrastructure of carpet mod (not much tho tbh).
 
 ## Credits
 
-The code for this version scarpet (which isn't identical, but similar to gnembon's) was inspired by
-[the original scarpet](https://github.com/gnembon/fabric-carpet) as well as vktec's [redlog](https://github.com/vktec/redlog).
+The code for this version of scarpet is basically a copy pasta of [the original scarpet's code](https://github.com/gnembon/fabric-carpet)
 
 ## Getting Started
 ### Setting up your sources

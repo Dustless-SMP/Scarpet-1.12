@@ -8,7 +8,7 @@ import carpet.script.value.NumericValue;
 import carpet.script.value.StringValue;
 import carpet.script.value.Value;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.;
+import net.minecraft.util.DamageSource;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;
@@ -47,7 +47,7 @@ public class EntityEventsGroup
             }
             if (key.getRight() != null)
             {
-                if (entity.getServer().getPlayerManager().getPlayer(key.getRight())==null)
+                if (entity.getServer().getPlayerList().getPlayerByUsername(key.getRight())==null)
                 {
                     iterator.remove();
                     continue;
@@ -94,7 +94,7 @@ public class EntityEventsGroup
         };
         public static final Event ON_REMOVED = new Event("on_removed", 0);
         public static final Event ON_TICK = new Event("on_tick", 0);
-        public static final Event ON_DAMAGE = new Event("on_damaged", 3)
+        public static final Event ON_DAMAGE = new Event("on_damaged", 3)//todo check if it requires immediate damage src or tru damage src
         {
             @Override
             public List<Value> makeArgs(Entity entity, Object... providedArgs)
@@ -104,8 +104,8 @@ public class EntityEventsGroup
                 return Arrays.asList(
                         new EntityValue(entity),
                         new NumericValue(amount),
-                        new StringValue(source.getName()),
-                        source.getAttacker()==null?Value.NULL:new EntityValue(source.getAttacker())
+                        new StringValue(source.getDamageType()),
+                        source.getImmediateSource()==null?Value.NULL:new EntityValue(source.getTrueSource())
                 );
             }
         };
@@ -129,7 +129,7 @@ public class EntityEventsGroup
         public boolean call(CarpetEventServer.Callback tickCall, Entity entity, Object ... args)
         {
             assert args.length == argcount-1;
-            return tickCall.execute(entity.getCommandSource(), makeArgs(entity, args));
+            return tickCall.execute(entity, makeArgs(entity, args));
         }
         protected List<Value> makeArgs(Entity entity, Object ... args)
         {

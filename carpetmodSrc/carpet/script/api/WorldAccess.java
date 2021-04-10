@@ -632,7 +632,7 @@ public class WorldAccess {
             boolean force = false;
             if (lv.size() > locator.offset)
                 force = lv.get(locator.offset).evalValue(c, Context.BOOLEAN).getBoolean();
-            Value retval = new NumericValue(canHasChunk(((CarpetContext)c).s.getWorld(), new ChunkPos(pos), null, force));
+            Value retval = new NumericValue(canHasChunk(((CarpetContext)c).s.getEntityWorld(), new ChunkPos(pos)));
             return (c_, t_) -> retval;
         });
 
@@ -1376,32 +1376,6 @@ public class WorldAccess {
             return (_c, _t) -> ret;
         });
 
-        expression.addLazyFunction("custom_dimension", -1, (c, t, lv) ->
-        {
-            if (lv.size() == 0) throw new InternalExpressionException("'custom_dimension' requires at least one argument");
-            CarpetContext cc = (CarpetContext)c;
-            cc.host.issueDeprecation("custom_dimension()");
-            String worldKey = lv.get(0).evalValue(c).getString();
-
-            Long seed = null;
-            if (lv.size() > 1)
-            {
-                String seedKey = lv.get(1).evalValue(c).getString();
-                try
-                {
-                    seed = Long.parseLong(seedKey);
-                }
-                catch (NumberFormatException ignored)
-                {
-                    throw new InternalExpressionException("Incorrect number format for seed: " + seedKey);
-                }
-            }
-
-            boolean success = WorldTools.createWorld(cc.s.getMinecraftServer(), worldKey, seed);
-            if (!success) return LazyValue.FALSE;
-            CarpetServer.settingsManager.notifyPlayersCommandsChanged();
-            return LazyValue.TRUE;
-        });
 
 
         expression.addLazyFunction("reset_chunk", -1, (c, t, lv) ->

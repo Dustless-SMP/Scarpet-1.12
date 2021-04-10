@@ -1,7 +1,6 @@
 package carpet.script.utils;
 
 import carpet.CarpetSettings;
-import carpet.network.ServerNetworkHandler;
 import carpet.script.CarpetContext;
 import carpet.script.exception.InternalExpressionException;
 import carpet.script.exception.ThrowStatement;
@@ -18,31 +17,26 @@ import carpet.script.value.Value;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.command.argument.ParticleArgumentType;
 import net.minecraft.entity.Entity;
-import net.minecraft.nbt.ByteTag;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.DoubleTag;
-import net.minecraft.nbt.FloatTag;
-import net.minecraft.nbt.IntTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.LiteralText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagByte;
+import net.minecraft.nbt.NBTTagDouble;
+import net.minecraft.nbt.NBTTagFloat;
+import net.minecraft.nbt.NBTTagInt;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagString;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.registry.Registry;
+import net.minecraft.util.text.TextComponentString;
+import net.minecraft.world.DimensionType;
 import net.minecraft.world.World;
-import net.minecraft.util.registry.RegistryKey;
+import net.minecraft.world.WorldServer;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
@@ -57,14 +51,15 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+
 public class ShapeDispatcher
 {
-    private static final Map<String, ParticleEffect> particleCache = new HashMap<>();
+    private static final Map<String, EnumParticleTypes> particleCache = new HashMap<>();
 
     public static Pair<ExpiringShape,Map<String, Value>> fromFunctionArgs(
             CarpetContext cc,
             List<Value> lv,
-            ServerPlayerEntity[] playerRef
+            EntityPlayerMP[] playerRef
     )
     {
         if (lv.size() < 3) throw new InternalExpressionException("'draw_shape' takes at least three parameters, shape name, duration, and its params");
@@ -77,7 +72,7 @@ public class ShapeDispatcher
             if (paramValue instanceof MapValue)
             {
                 params = new HashMap<>();
-                ((MapValue) paramValue).getMap().entrySet().forEach(e -> params.put(e.getKey().getString(),e.getValue()));
+                ((MapValue) paramValue).getMap().forEach((key, value) -> params.put(key.getString(), value));
             }
             else if (paramValue instanceof ListValue)
             {
@@ -91,12 +86,12 @@ public class ShapeDispatcher
             for (int i=2; i < lv.size(); i++) paramList.add(lv.get(i));
             params = ShapeDispatcher.parseParams(paramList);
         }
-        params.putIfAbsent("dim", new StringValue(cc.s.getWorld().getRegistryKey().getValue().toString()));
+        params.putIfAbsent("dim", new StringValue(DimensionType.getById(cc.s.getCommandSenderEntity().dimension).getName()));
         params.putIfAbsent("duration", duration);
 
         if (params.containsKey("player"))
         {
-            ServerPlayerEntity player = EntityValue.getPlayerByValue(cc.s.getMinecraftServer(), params.get("player"));
+            EntityPlayerMP player = EntityValue.getPlayerByValue(cc.s.getServer(), params.get("player"));
             if (player == null)
                 throw new InternalExpressionException("'player' parameter needs to represent an existing player");
             params.remove("player");
@@ -105,61 +100,24 @@ public class ShapeDispatcher
         return Pair.of(ShapeDispatcher.create(cc, shapeType, params), params);
     }
 
-    public static void sendShape(List<ServerPlayerEntity> players, List<Pair<ExpiringShape,Map<String, Value>>> shapes)
-    {
-        List<ServerPlayerEntity> clientPlayers = new ArrayList<>();
-        List<ServerPlayerEntity> alternativePlayers = new ArrayList<>();
-        for (ServerPlayerEntity player : players)
-        {
-            if (ServerNetworkHandler.isValidCarpetPlayer(player))
-            {
-                clientPlayers.add(player);
-            }
-            else
-            {
-                alternativePlayers.add(player);
-            }
-        }
-        if (!clientPlayers.isEmpty())
-        {
-
-            ListTag tag = new ListTag();
-            int tagcount = 0;
-            for (Pair<ExpiringShape, Map<String, Value>> s : shapes)
-            {
-                tag.add(ExpiringShape.toTag(s.getRight()));  // 4000 shapes limit boxes
-                if (tagcount++>1000)
-                {
-                    tagcount = 0;
-                    Tag finalTag = tag;
-                    clientPlayers.forEach( p -> ServerNetworkHandler.sendCustomCommand(p, "scShapes", finalTag));
-                    tag = new ListTag();
-                }
-            }
-            Tag finalTag = tag;
-            if (tag.size() > 0) clientPlayers.forEach( p -> ServerNetworkHandler.sendCustomCommand(p, "scShapes", finalTag));
-        }
-        if (!alternativePlayers.isEmpty())
-        {
-            List<Consumer<ServerPlayerEntity>> alternatives = new ArrayList<>();
+    public static void sendShape(List<EntityPlayerMP> players, List<Pair<ExpiringShape,Map<String, Value>>> shapes) {
+        if (!players.isEmpty()) {
+            List<Consumer<EntityPlayerMP>> alternatives = new ArrayList<>();
             shapes.forEach(s -> alternatives.add(s.getLeft().alternative()));
-            alternativePlayers.forEach(p -> alternatives.forEach( a -> a.accept(p)));
+            players.forEach(p -> alternatives.forEach( a -> a.accept(p)));
         }
     }
 
-    public static ParticleEffect getParticleData(String name)
+    public static EnumParticleTypes getParticleData(String name)
     {
-        ParticleEffect particle = particleCache.get(name);
+        EnumParticleTypes particle = particleCache.get(name);
         if (particle != null)
             return particle;
-        try
-        {
-            particle = ParticleArgumentType.readParameters(new StringReader(name));
-        }
-        catch (CommandSyntaxException e)
-        {
+
+        particle = EnumParticleTypes.getByName(name);
+        if(particle == null)
             throw new ThrowStatement(name, Throwables.UNKNOWN_PARTICLE);
-        }
+
         particleCache.put(name, particle);
         return particle;
     }
@@ -194,10 +152,10 @@ public class ShapeDispatcher
     }
 
     // client
-    public static ExpiringShape fromTag(CompoundTag tag)
+    public static ExpiringShape fromTag(NBTTagCompound tag)
     {
         Map<String, Value> options = new HashMap<>();
-        for (String key : tag.getKeys())
+        for (String key : tag.getKeySet())
         {
             Param decoder = Param.of.get(key);
             if (decoder==null)
@@ -205,13 +163,13 @@ public class ShapeDispatcher
                 CarpetSettings.LOG.info("Unknown parameter for shape: "+key);
                 return null;
             }
-            Value decodedValue = decoder.decode(tag.get(key));
+            Value decodedValue = decoder.decode(tag.getTag(key));
             options.put(key, decodedValue);
         }
         Value shapeValue = options.get("shape");
         if (shapeValue == null)
         {
-            CarpetSettings.LOG.info("Shape id missing in "+ String.join(", ", tag.getKeys()));
+            CarpetSettings.LOG.info("Shape id missing in "+ String.join(", ", tag.getKeySet()));
             return null;
         }
         Function<Map<String, Value>,ExpiringShape> factory = ExpiringShape.shapeProviders.get(shapeValue.getString());
@@ -260,17 +218,17 @@ public class ShapeDispatcher
         protected String snapTo;
         protected boolean snapX, snapY, snapZ;
         protected boolean discreteX, discreteY, discreteZ;
-        protected RegistryKey<World> shapeDimension;
+        protected DimensionType shapeDimension;
 
 
         protected ExpiringShape() { }
 
-        public static CompoundTag toTag(Map<String, Value> params)
+        public static NBTTagCompound toTag(Map<String, Value> params)
         {
-            CompoundTag tag = new CompoundTag();
+            NBTTagCompound tag = new NBTTagCompound();
             params.forEach((k, v) -> {
-                Tag valTag = Param.of.get(k).toTag(v);
-                if (valTag != null) tag.put(k, valTag);
+                NBTBase valTag = Param.of.get(k).toTag(v);
+                if (valTag != null) tag.setTag(k, valTag);
             });
             return tag;
         }
@@ -314,7 +272,7 @@ public class ShapeDispatcher
 
             key = 0;
             followEntity = -1;
-            shapeDimension = RegistryKey.of(Registry.DIMENSION, new Identifier(options.get("dim").getString()));
+            shapeDimension = DimensionType.valueOf(options.get("dim").getString());
             if (options.containsKey("follow"))
             {
                 followEntity = NumericValue.asNumber(options.getOrDefault("follow", optional.get("follow"))).getInt();
@@ -331,15 +289,15 @@ public class ShapeDispatcher
         public Vec3d toAbsolute(Entity e, Vec3d vec, float partialTick)
         {
             return vec.add(
-                    snapX?(discreteX ?MathHelper.floor(e.getX()):MathHelper.lerp(partialTick, e.prevX, e.getX())):0.0,
-                    snapY?(discreteY ?MathHelper.floor(e.getY()):MathHelper.lerp(partialTick, e.prevY, e.getY())):0.0,
-                    snapZ?(discreteZ ?MathHelper.floor(e.getZ()):MathHelper.lerp(partialTick, e.prevZ, e.getZ())):0.0
+                    snapX?(discreteX ?MathHelper.floor(e.posX):MathHelper.clampedLerp(partialTick, e.prevPosX, e.posX)):0.0,
+                    snapY?(discreteY ?MathHelper.floor(e.posY):MathHelper.clampedLerp(partialTick, e.prevPosY, e.posY)):0.0,
+                    snapZ?(discreteZ ?MathHelper.floor(e.posZ):MathHelper.clampedLerp(partialTick, e.prevPosZ, e.posZ)):0.0
             );
         }
         public Vec3d relativiseRender(World world, Vec3d vec, float partialTick)
         {
             if (followEntity < 0) return vec;
-            Entity e = world.getEntityById(followEntity);
+            Entity e = world.getEntityByID(followEntity);
             if (e == null) return vec;
             return toAbsolute(e, vec, partialTick);
         }
@@ -354,7 +312,7 @@ public class ShapeDispatcher
                     NumericValue.asNumber( elements.get(2)).getDouble()
             );
         }
-        protected ParticleEffect replacementParticle()
+        protected EnumParticleTypes replacementParticle()
         {
             String particleName = fa ==0 ?
                     String.format(Locale.ROOT , "dust %.1f %.1f %.1f 1.0", r, g, b):
@@ -363,7 +321,7 @@ public class ShapeDispatcher
         }
 
 
-        public abstract Consumer<ServerPlayerEntity> alternative();
+        public abstract Consumer<EntityPlayerMP> alternative();
         public long key()
         {
             if (key!=0) return key;
@@ -438,7 +396,7 @@ public class ShapeDispatcher
         int textcolor;
         int textbck;
 
-        Direction facing;
+        EnumFacing facing;
         float raise;
         float tilt;
         float lean;
@@ -447,7 +405,7 @@ public class ShapeDispatcher
         float indent;
         int align;
         float height;
-        Text value;
+        ITextComponent value;
         boolean doublesided;
 
         @Override
@@ -456,7 +414,7 @@ public class ShapeDispatcher
             super.init(options);
             pos = vecFromValue(options.get("pos"));
             value = ((FormattedTextValue)options.get("text")).getText();
-            text = value.getString();
+            text = value.getUnformattedText();
             if (options.containsKey("value"))
             {
                 value = ((FormattedTextValue)options.get("value")).getText();
@@ -467,12 +425,12 @@ public class ShapeDispatcher
             facing = null;
             switch (dir)
             {
-                case "north": facing = Direction.NORTH; break;
-                case "south": facing = Direction.SOUTH; break;
-                case "east": facing = Direction.EAST; break;
-                case "west": facing = Direction.WEST; break;
-                case "up":  facing = Direction.UP; break;
-                case "down":  facing = Direction.DOWN; break;
+                case "north": facing = EnumFacing.NORTH; break;
+                case "south": facing = EnumFacing.SOUTH; break;
+                case "east": facing = EnumFacing.EAST; break;
+                case "west": facing = EnumFacing.WEST; break;
+                case "up":  facing = EnumFacing.UP; break;
+                case "down":  facing = EnumFacing.DOWN; break;
             }
             align = 0;
             if (options.containsKey("align"))
@@ -510,7 +468,7 @@ public class ShapeDispatcher
 
 
         @Override
-        public Consumer<ServerPlayerEntity> alternative()
+        public Consumer<EntityPlayerMP> alternative()
         {
             return s -> {};
         }
@@ -560,13 +518,13 @@ public class ShapeDispatcher
         }
 
         @Override
-        public Consumer<ServerPlayerEntity> alternative()
+        public Consumer<EntityPlayerMP> alternative()
         {
-            ParticleEffect particle = replacementParticle();
+            EnumParticleTypes particle = replacementParticle();
             double density = Math.max(2.0, from.distanceTo(to) /50/ (a+0.1)) ;
             return p ->
             {
-                if (p.world.getRegistryKey() == shapeDimension)
+                if (DimensionType.getById(p.dimension) == shapeDimension)
                 {
                     particleMesh(
                             Collections.singletonList(p),
@@ -589,7 +547,7 @@ public class ShapeDispatcher
             return hash;
         }
 
-        public static int particleMesh(List<ServerPlayerEntity> playerList, ParticleEffect particle, double density,
+        public static int particleMesh(List<EntityPlayerMP> playerList, EnumParticleTypes particle, double density,
                                        Vec3d from, Vec3d to)
         {
             double x1 = from.x;
@@ -642,13 +600,13 @@ public class ShapeDispatcher
         }
 
         @Override
-        public Consumer<ServerPlayerEntity> alternative()
+        public Consumer<EntityPlayerMP> alternative()
         {
-            ParticleEffect particle = replacementParticle();
+            EnumParticleTypes particle = replacementParticle();
             double density = Math.max(2.0, from.distanceTo(to) /50) / (a+0.1);
             return p ->
             {
-                if (p.world.getRegistryKey() == shapeDimension) drawParticleLine(
+                if (DimensionType.getById(p.dimension) == shapeDimension) drawParticleLine(
                         Collections.singletonList(p),
                         particle,
                         relativiseRender(p.getServerWorld(), from, 0),
@@ -703,12 +661,12 @@ public class ShapeDispatcher
         }
 
         @Override
-        public Consumer<ServerPlayerEntity> alternative() { return p ->
+        public Consumer<EntityPlayerMP> alternative() { return p ->
         {
-            ParticleEffect particle = replacementParticle();
+            EnumParticleTypes particle = replacementParticle();
             int partno = Math.min(1000,20*subdivisions);
-            Random rand = p.world.getRandom();
-            ServerWorld world = p.getServerWorld();
+            Random rand = p.world.rand;
+            WorldServer world = p.getServerWorld();
 
             Vec3d ccenter = relativiseRender(world, center, 0 );
 
@@ -724,7 +682,7 @@ public class ShapeDispatcher
                 double x = radius * MathHelper.cos(theta) * MathHelper.cos(phi);
                 double y = radius * MathHelper.cos(theta) * MathHelper.sin(phi);
                 double z = radius * MathHelper.sin(theta);
-                world.spawnParticles(p, particle, true,
+                world.spawnParticle(p, particle, true,
                         x+ccx, y+ccy, z+ccz, 1,
                         0.0, 0.0, 0.0, 0.0);
             }
@@ -759,7 +717,7 @@ public class ShapeDispatcher
         float radius;
         int level;
         int subdivisions;
-        Direction.Axis axis;
+        EnumFacing.Axis axis;
 
         private Cylinder() { super(); }
 
@@ -776,17 +734,17 @@ public class ShapeDispatcher
                 subdivisions = Math.max(10, (int)(10*Math.sqrt(radius)));
             }
             height = NumericValue.asNumber(options.getOrDefault("height", optional.get("height"))).getFloat();
-            axis = Direction.Axis.fromName(options.getOrDefault("axis", optional.get("axis")).getString());
+            axis = EnumFacing.Axis.valueOf(options.getOrDefault("axis", optional.get("axis")).getString());
         }
 
 
         @Override
-        public Consumer<ServerPlayerEntity> alternative() { return p ->
+        public Consumer<EntityPlayerMP> alternative() { return p ->
         {
-            ParticleEffect particle = replacementParticle();
+            EnumParticleTypes particle = replacementParticle();
             int partno = (int)Math.min(1000,Math.sqrt(20*subdivisions*(1+height)));
-            Random rand = p.world.getRandom();
-            ServerWorld world = p.getServerWorld();
+            Random rand = p.world.rand;
+            WorldServer world = p.getServerWorld();
 
             Vec3d ccenter = relativiseRender(world, center, 0 );
 
@@ -794,7 +752,7 @@ public class ShapeDispatcher
             double ccy = ccenter.y;
             double ccz = ccenter.z;
 
-            if (axis == Direction.Axis.Y)
+            if (axis == EnumFacing.Axis.Y)
             {
                 for (int i=0; i<partno; i++)
                 {
@@ -803,10 +761,10 @@ public class ShapeDispatcher
                     double x = radius * MathHelper.cos(phi);
                     double y = d;
                     double z = radius * MathHelper.sin(phi);
-                    world.spawnParticles(p, particle, true, x+ccx, y+ccy, z+ccz, 1, 0.0, 0.0, 0.0, 0.0);
+                    world.spawnParticle(p, particle, true, x+ccx, y+ccy, z+ccz, 1, 0.0, 0.0, 0.0, 0.0);
                 }
             }
-            else if (axis== Direction.Axis.X)
+            else if (axis==EnumFacing.Axis.X)
             {
                 for (int i=0; i<partno; i++)
                 {
@@ -815,7 +773,7 @@ public class ShapeDispatcher
                     double x = d;
                     double y = radius * MathHelper.cos(phi);
                     double z = radius * MathHelper.sin(phi);
-                    world.spawnParticles(p, particle, true, x+ccx, y+ccy, z+ccz, 1, 0.0, 0.0, 0.0, 0.0);
+                    world.spawnParticle(p, particle, true, x+ccx, y+ccy, z+ccz, 1, 0.0, 0.0, 0.0, 0.0);
                 }
             }
             else  // Z
@@ -827,7 +785,7 @@ public class ShapeDispatcher
                     double x = radius * MathHelper.sin(phi);
                     double y = radius * MathHelper.cos(phi);
                     double z = d;
-                    world.spawnParticles(p, particle, true, x+ccx, y+ccy, z+ccz, 1, 0.0, 0.0, 0.0, 0.0);
+                    world.spawnParticle(p, particle, true, x+ccx, y+ccy, z+ccz, 1, 0.0, 0.0, 0.0, 0.0);
                 }
             }
         };}
@@ -890,9 +848,9 @@ public class ShapeDispatcher
             this.id = id;
         }
 
-        public abstract Tag toTag(Value value); //validates value, returning null if not necessary to keep it and serialize
+        public abstract NBTBase toTag(Value value); //validates value, returning null if not necessary to keep it and serialize
         public abstract Value validate(Map<String, Value> options, CarpetContext cc, Value value); // makes sure the value is proper
-        public abstract Value decode(Tag tag);
+        public abstract Value decode(NBTBase tag);
     }
 
     public abstract static class StringParam extends Param
@@ -900,8 +858,8 @@ public class ShapeDispatcher
         protected StringParam(String id) { super(id); }
 
         @Override
-        public Tag toTag(Value value) { return StringTag.of(value.getString()); }
-        public Value decode(Tag tag) { return new StringValue(tag.asString()); }
+        public NBTBase toTag(Value value) { return NBTTagString.of(value.getString()); }
+        public Value decode(NBTBase tag) { return new StringValue(tag.toString()); }
     }
     public static class TextParam extends StringParam
     {
@@ -926,22 +884,22 @@ public class ShapeDispatcher
         public Value validate(Map<String, Value> options, CarpetContext cc, Value value)
         {
             if (!(value instanceof FormattedTextValue))
-                value = new FormattedTextValue(new LiteralText(value.getString()));
+                value = new FormattedTextValue(new TextComponentString(value.getString()));
             return value;
         }
 
         @Override
-        public Tag toTag(Value value)
+        public NBTBase toTag(Value value)
         {
             if (!(value instanceof FormattedTextValue))
-                value = new FormattedTextValue(new LiteralText(value.getString()));
-            return StringTag.of(((FormattedTextValue)value).serialize());
+                value = new FormattedTextValue(new TextComponentString(value.getString()));
+            return NBTTagString.of(((FormattedTextValue)value).serialize());
         }
 
         @Override
-        public Value decode(Tag tag)
+        public Value decode(NBTBase tag)
         {
-            return FormattedTextValue.deserialize(tag.asString());
+            return FormattedTextValue.deserialize(tag.toString());
         }
     }
 
@@ -1004,24 +962,24 @@ public class ShapeDispatcher
         }
 
         @Override
-        public Tag toTag(Value value)
+        public NBTBase toTag(Value value)
         {
-            return ByteTag.of(value.getBoolean());
+            return NBTTagByte.of(value.getBoolean());
         }
 
         @Override
-        public Value decode(Tag tag)
+        public Value decode(NBTBase tag)
         {
-            return new NumericValue(((ByteTag) tag).getByte() > 0);
+            return new NumericValue(((NBTTagByte) tag).getByte() > 0);
         }
     }
     public static class FloatParam extends NumericParam
     {
         protected FloatParam(String id) { super(id); }
         @Override
-        public Value decode(Tag tag) { return new NumericValue(((FloatTag)tag).getFloat()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagFloat)tag).getFloat()); }
         @Override
-        public Tag toTag(Value value) { return FloatTag.of(NumericValue.asNumber(value, id).getFloat()); }
+        public NBTBase toTag(Value value) { return NBTTagFloat.of(NumericValue.asNumber(value, id).getFloat()); }
     }
 
     public static abstract class PositiveParam extends NumericParam
@@ -1038,27 +996,27 @@ public class ShapeDispatcher
     {
         protected PositiveFloatParam(String id) { super(id); }
         @Override
-        public Value decode(Tag tag) { return new NumericValue(((FloatTag)tag).getFloat()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagFloat)tag).getFloat()); }
         @Override
-        public Tag toTag(Value value) { return FloatTag.of(NumericValue.asNumber(value, id).getFloat()); }
+        public NBTBase toTag(Value value) { return NBTTagFloat.of(NumericValue.asNumber(value, id).getFloat()); }
 
     }
     public static class PositiveIntParam extends PositiveParam
     {
         protected PositiveIntParam(String id) { super(id); }
         @Override
-        public Value decode(Tag tag) { return new NumericValue(((IntTag)tag).getInt()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagInt)tag).getInt()); }
         @Override
-        public Tag toTag(Value value) { return IntTag.of(NumericValue.asNumber(value, id).getInt()); }
+        public NBTBase toTag(Value value) { return NBTTagInt.of(NumericValue.asNumber(value, id).getInt()); }
 
     }
     public static class NonNegativeIntParam extends NumericParam
     {
         protected NonNegativeIntParam(String id) { super(id); }
         @Override
-        public Value decode(Tag tag) { return new NumericValue(((IntTag)tag).getInt()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagInt)tag).getInt()); }
         @Override
-        public Tag toTag(Value value) { return IntTag.of(NumericValue.asNumber(value, id).getInt()); }
+        public NBTBase toTag(Value value) { return NBTTagInt.of(NumericValue.asNumber(value, id).getInt()); }
         @Override public Value validate(Map<String, Value> options, CarpetContext cc, Value value)
         {
             Value ret = super.validate(options, cc, value);
@@ -1070,9 +1028,9 @@ public class ShapeDispatcher
     {
         protected NonNegativeFloatParam(String id) { super(id); }
         @Override
-        public Value decode(Tag tag) { return new NumericValue(((FloatTag)tag).getFloat()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagFloat)tag).getFloat()); }
         @Override
-        public Tag toTag(Value value) { return FloatTag.of(NumericValue.asNumber(value, id).getFloat()); }
+        public NBTBase toTag(Value value) { return NBTTagFloat.of(NumericValue.asNumber(value, id).getFloat()); }
         @Override public Value validate(Map<String, Value> options, CarpetContext cc, Value value)
         {
             Value ret = super.validate(options, cc, value);
@@ -1128,32 +1086,32 @@ public class ShapeDispatcher
                     throw new InternalExpressionException(p.id+" parameter cannot use entity as positions for relative positioning due to 'follow' attribute being present");
                 Entity e = ((EntityValue) value).getEntity();
                 return ListValue.of(
-                        new NumericValue(e.getX()),
-                        new NumericValue(e.getY()),
-                        new NumericValue(e.getZ())
+                        new NumericValue(e.posX),
+                        new NumericValue(e.posY),
+                        new NumericValue(e.posZ)
                 );
             }
             CarpetSettings.LOG.error("Value: "+value.getString());
             throw new InternalExpressionException("'"+p.id+"' requires a triple, block or entity to indicate position");
         }
 
-        public Value decode(Tag tag)
+        public Value decode(NBTBase tag)
         {
-            ListTag ctag = (ListTag)tag;
+            NBTTagList ctag = (NBTTagList)tag;
             return ListValue.of(
-                    new NumericValue(ctag.getDouble(0)),
-                    new NumericValue(ctag.getDouble(1)),
-                    new NumericValue(ctag.getDouble(2))
+                    new NumericValue(ctag.getDoubleAt(0)),
+                    new NumericValue(ctag.getDoubleAt(1)),
+                    new NumericValue(ctag.getDoubleAt(2))
             );
         }
         @Override
-        public Tag toTag(Value value)
+        public NBTBase toTag(Value value)
         {
             List<Value> lv = ((ListValue)value).getItems();
-            ListTag tag = new ListTag();
-            tag.add(DoubleTag.of(NumericValue.asNumber(lv.get(0), "x").getDouble()));
-            tag.add(DoubleTag.of(NumericValue.asNumber(lv.get(1), "y").getDouble()));
-            tag.add(DoubleTag.of(NumericValue.asNumber(lv.get(2), "z").getDouble()));
+            NBTTagList tag = new NBTTagList();
+            tag.appendTag(NBTTagDouble.of(NumericValue.asNumber(lv.get(0), "x").getDouble()));
+            tag.appendTag(NBTTagDouble.of(NumericValue.asNumber(lv.get(1), "y").getDouble()));
+            tag.appendTag(NBTTagDouble.of(NumericValue.asNumber(lv.get(2), "z").getDouble()));
             return tag;
         }
     }
@@ -1175,34 +1133,34 @@ public class ShapeDispatcher
             return ListValue.wrap(points);
         }
 
-        public Value decode(Tag tag)
+        public Value decode(NBTBase tag)
         {
-            ListTag ltag = (ListTag)tag;
+            NBTTagList ltag = (NBTTagList)tag;
             List<Value> points = new ArrayList<>();
             for (int i=0, ll = ltag.size(); i<ll; i++)
             {
-                ListTag ptag = ltag.getList(i);
+                NBTTagList ptag = (NBTTagList) ltag.getTagList().get(i);
                 points.add(ListValue.of(
-                        new NumericValue(ptag.getDouble(0)),
-                        new NumericValue(ptag.getDouble(1)),
-                        new NumericValue(ptag.getDouble(2))
+                        new NumericValue(ptag.getDoubleAt(0)),
+                        new NumericValue(ptag.getDoubleAt(1)),
+                        new NumericValue(ptag.getDoubleAt(2))
                 ));
             }
             return ListValue.wrap(points);
         }
         @Override
-        public Tag toTag(Value pointsValue)
+        public NBTBase toTag(Value pointsValue)
         {
             List<Value> lv = ((ListValue)pointsValue).getItems();
-            ListTag ltag = new ListTag();
+            NBTTagList ltag = new NBTTagList();
             for (Value value : lv)
             {
                 List<Value> coords = ((ListValue)value).getItems();
-                ListTag tag = new ListTag();
-                tag.add(DoubleTag.of(NumericValue.asNumber(lv.get(0), "x").getDouble()));
-                tag.add(DoubleTag.of(NumericValue.asNumber(lv.get(1), "y").getDouble()));
-                tag.add(DoubleTag.of(NumericValue.asNumber(lv.get(2), "z").getDouble()));
-                ltag.add(tag);
+                NBTTagList tag = new NBTTagList();
+                tag.appendTag(NBTTagDouble.of(NumericValue.asNumber(lv.get(0), "x").getDouble()));
+                tag.appendTag(NBTTagDouble.of(NumericValue.asNumber(lv.get(1), "y").getDouble()));
+                tag.appendTag(NBTTagDouble.of(NumericValue.asNumber(lv.get(2), "z").getDouble()));
+                ltag.appendTag(tag);
             }
             return ltag;
         }
@@ -1216,9 +1174,9 @@ public class ShapeDispatcher
             super(id);
         }
 
-        public Value decode(Tag tag) { return new NumericValue(((IntTag)tag).getInt()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagInt)tag).getInt()); }
         @Override
-        public Tag toTag(Value value) { return IntTag.of(NumericValue.asNumber(value, id).getInt()); }
+        public NBTBase toTag(Value value) { return NBTTagInt.of(NumericValue.asNumber(value, id).getInt()); }
     }
 
     public static class EntityParam extends Param
@@ -1227,22 +1185,22 @@ public class ShapeDispatcher
         protected EntityParam(String id) { super(id); }
 
         @Override
-        public Tag toTag(Value value)
+        public NBTBase toTag(Value value)
         {
-            return IntTag.of(NumericValue.asNumber(value, id).getInt());
+            return NBTTagInt.of(NumericValue.asNumber(value, id).getInt());
         }
 
         @Override
         public Value validate(Map<String, Value> options, CarpetContext cc, Value value)
         {
             if (value instanceof EntityValue) return new NumericValue(((EntityValue) value).getEntity().getEntityId());
-            ServerPlayerEntity player = EntityValue.getPlayerByValue(cc.s.getMinecraftServer(), value);
+            EntityPlayerMP player = EntityValue.getPlayerByValue(cc.s.getServer(), value);
             if (player == null)
                 throw new InternalExpressionException(id+" parameter needs to represent an entity or player");
             return new NumericValue(player.getEntityId());
         }
 
-        public Value decode(Tag tag) { return new NumericValue(((IntTag)tag).getInt()); }
+        public Value decode(NBTBase tag) { return new NumericValue(((NBTTagInt)tag).getInt()); }
     }
 
     private static boolean isStraight(Vec3d from, Vec3d to, double density)
@@ -1252,21 +1210,21 @@ public class ShapeDispatcher
         return false;
     }
 
-    private static int drawOptimizedParticleLine(List<ServerPlayerEntity> playerList, ParticleEffect particle, Vec3d from, Vec3d to, double density)
+    private static int drawOptimizedParticleLine(List<EntityPlayerMP> playerList, EnumParticleTypes particle, Vec3d from, Vec3d to, double density)
     {
         double distance = from.distanceTo(to);
         int particles = (int)(distance/density);
         Vec3d towards = to.subtract(from);
         int parts = 0;
-        for (ServerPlayerEntity player : playerList)
+        for (EntityPlayerMP player : playerList)
         {
-            ServerWorld world = player.getServerWorld();
-            world.spawnParticles(player, particle, true,
+            WorldServer world = player.getServerWorld();
+            world.spawnParticle(player, particle, true,
                     (towards.x)/2+from.x, (towards.y)/2+from.y, (towards.z)/2+from.z, particles/3,
                     towards.x/6, towards.y/6, towards.z/6, 0.0);
-            world.spawnParticles(player, particle, true,
+            world.spawnParticle(player, particle, true,
                     from.x, from.y, from.z,1,0.0,0.0,0.0,0.0);
-            world.spawnParticles(player, particle, true,
+            world.spawnParticle(player, particle, true,
                     to.x, to.y, to.z,1,0.0,0.0,0.0,0.0);
             parts += particles/3+2;
         }
@@ -1275,13 +1233,13 @@ public class ShapeDispatcher
         {
             int center = (divider*2)/3;
             int dev = 2*divider;
-            for (ServerPlayerEntity player : playerList)
+            for (EntityPlayerMP player : playerList)
             {
-                ServerWorld world = player.getServerWorld();
-                world.spawnParticles(player, particle, true,
+                WorldServer world = player.getServerWorld();
+                world.spawnParticle(player, particle, true,
                         (towards.x)/center+from.x, (towards.y)/center+from.y, (towards.z)/center+from.z, particles/divider,
                         towards.x/dev, towards.y/dev, towards.z/dev, 0.0);
-                world.spawnParticles(player, particle, true,
+                world.spawnParticle(player, particle, true,
                         (towards.x)*(1.0-1.0/center)+from.x, (towards.y)*(1.0-1.0/center)+from.y, (towards.z)*(1.0-1.0/center)+from.z, particles/divider,
                         towards.x/dev, towards.y/dev, towards.z/dev, 0.0);
             }
@@ -1291,22 +1249,22 @@ public class ShapeDispatcher
         return parts;
     }
 
-    public static int drawParticleLine(List<ServerPlayerEntity> players, ParticleEffect particle, Vec3d from, Vec3d to, double density)
+    public static int drawParticleLine(List<EntityPlayerMP> players, EnumParticleTypes particle, Vec3d from, Vec3d to, double density)
     {
-        double distance = from.squaredDistanceTo(to);
+        double distance = from.squareDistanceTo(to);
         if (distance == 0) return 0;
         int pcount = 0;
         if (distance < 100)
         {
-            Random rand = players.get(0).getServerWorld().random;
+            Random rand = players.get(0).getServerWorld().rand;
             int particles = (int)(distance/density)+1;
             Vec3d towards = to.subtract(from);
             for (int i = 0; i < particles; i++)
             {
-                Vec3d at = from.add(towards.multiply( rand.nextDouble()));
-                for (ServerPlayerEntity player : players)
+                Vec3d at = from.add(towards.multiply(rand.nextDouble()));
+                for (EntityPlayerMP player : players)
                 {
-                    player.getServerWorld().spawnParticles(player, particle, true,
+                    player.getServerWorld().spawnParticle(player, particle, true,
                             at.x, at.y, at.z, 1,
                             0.0, 0.0, 0.0, 0.0);
                     pcount ++;
@@ -1322,9 +1280,9 @@ public class ShapeDispatcher
              delta.lengthSquared()<distance;
              delta = delta.add(incvec.multiply(Sys.randomizer.nextFloat())))
         {
-            for (ServerPlayerEntity player : players)
+            for (EntityPlayerMP player : players)
             {
-                player.getServerWorld().spawnParticles(player, particle, true,
+                player.getServerWorld().spawnParticle(player, particle, true,
                         delta.x+from.x, delta.y+from.y, delta.z+from.z, 1,
                         0.0, 0.0, 0.0, 0.0);
                 pcount ++;

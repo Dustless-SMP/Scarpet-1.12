@@ -35,10 +35,13 @@ public class BlockValue extends Value
     private final WorldServer world;
     private NBTTagCompound data;
 
-    public static BlockValue fromCoords(CarpetContext c, int x, int y, int z)
-    {
+    public static BlockValue fromCoords(CarpetContext c, int x, int y, int z) {
+        return fromCoords(c, x, y, z, -1);
+    }
+
+    public static BlockValue fromCoords(CarpetContext c, int x, int y, int z, int dimension) {
         BlockPos pos = locateBlockPos(c, x,y,z);
-        return new BlockValue(null, c.s.getServer().getWorld(), pos);
+        return new BlockValue(null, c.s.getServer().getWorld(dimension), pos);
     }
 
     private static final Map<String, BlockValue> bvCache= new HashMap<>();

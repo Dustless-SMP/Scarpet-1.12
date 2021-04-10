@@ -1,25 +1,19 @@
 package carpet.script;
 
 import carpet.CarpetSettings;
-import carpet.script.argument.FunctionArgument;
 import carpet.script.bundled.BundledModule;
-import carpet.CarpetServer;
 import carpet.script.bundled.FileModule;
 import carpet.script.bundled.Module;
-import carpet.script.command.CommandToken;
 import carpet.script.exception.InvalidCallbackException;
 import carpet.script.value.FunctionValue;
-import carpet.script.value.StringValue;
 import carpet.script.value.Value;
 import carpet.utils.Messenger;
-
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,10 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static net.minecraft.server.command.CommandManager.argument;
-import static net.minecraft.server.command.CommandManager.literal;
 
 public class CarpetScriptServer
 {
@@ -127,11 +117,11 @@ public class CarpetScriptServer
         CarpetEventServer.Event.START.onTick();
     }
 
-    /* todo .sc files
+
     public Module getModule(String name, boolean allowLibraries) {
         try {
-            Path folder = server. getSavePath(WorldSavePath.ROOT).resolve("scripts");
-            if (!Files.exists(folder)) 
+            Path folder = server.getDataDirectory().toPath().resolve("scripts");
+            if (!Files.exists(folder))
                 Files.createDirectories(folder);
             Optional<Path>
             scriptPath = Files.list(folder)
@@ -142,18 +132,6 @@ public class CarpetScriptServer
             if (scriptPath.isPresent())
                 return new FileModule(scriptPath.get());
 
-            if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT)
-            {
-                Path globalFolder = FabricLoader.getInstance().getConfigDir().resolve("carpet/scripts");
-                if (!Files.exists(globalFolder)) 
-                    Files.createDirectories(globalFolder);
-                scriptPath = Files.walk(globalFolder)
-                        .filter(script -> script.getFileName().toString().equalsIgnoreCase(name + ".sc") ||
-                                (allowLibraries && script.getFileName().toString().equalsIgnoreCase(name + ".scl")))
-                        .findFirst();
-                if (scriptPath.isPresent())
-                    return new FileModule(scriptPath.get());
-            }
         } catch (IOException e) {
             CarpetSettings.LOG.error("Exception while loading the app: ", e);
         }
@@ -190,22 +168,13 @@ public class CarpetScriptServer
             }
         }
         try {
-            Path worldScripts = server.getSavePath(WorldSavePath.ROOT).resolve("scripts");
+            Path worldScripts = server.getDataDirectory().toPath().resolve("scripts");
             if (!Files.exists(worldScripts)) 
                 Files.createDirectories(worldScripts);
             Files.list(worldScripts)
                 .filter(f -> f.toString().endsWith(".sc"))
                 .forEach(f -> moduleNames.add(f.getFileName().toString().replaceFirst("\\.sc$","").toLowerCase(Locale.ROOT)));
 
-            if (includeBuiltIns && (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT))
-            {
-                Path globalScripts = FabricLoader.getInstance().getConfigDir().resolve("carpet/scripts");
-                if (!Files.exists(globalScripts))
-                    Files.createDirectories(globalScripts);
-                Files.walk(globalScripts, FileVisitOption.FOLLOW_LINKS)
-                    .filter(f -> f.toString().endsWith(".sc"))
-                    .forEach(f -> moduleNames.add(f.getFileName().toString().replaceFirst("\\.sc$","").toLowerCase(Locale.ROOT)));
-            }
         } catch (IOException e) {
             CarpetSettings.LOG.error("Exception while searching for apps: ", e);
         }
@@ -276,7 +245,7 @@ public class CarpetScriptServer
         }
         else if (isCommandAdded)
         {
-            CarpetServer.settingsManager.notifyPlayersCommandsChanged();
+            //todo check for commands changing, tho there is no brigadier here so idk if necessary
             if (!isRuleApp) Messenger.m(source, "gi "+name+" app "+action+" with /"+name+" command");
         }
         else
@@ -318,11 +287,11 @@ public class CarpetScriptServer
         modules.get(name).onClose();
         modules.remove(name);
         if (!isRuleApp) unloadableModules.remove(name);
-        CarpetServer.settingsManager.notifyPlayersCommandsChanged();
+        //todo check for player notification
         if (notifySource) Messenger.m(source, "gi Removed "+name+" app");
         return true;
     }
-    */
+
     public boolean runEventCall(ICommandSender sender, String hostname, String optionalTarget, FunctionValue udf, List<Value> argv)
     {
         CarpetScriptHost host = globalHost;
@@ -380,18 +349,18 @@ public class CarpetScriptServer
             }
             return 1;
         }
-        String hostRecipient = optionalRecipient == null?null:optionalRecipient.getEntityName();
-        ICommandSender source = (optionalRecipient == null)? sender : optionalRecipient.getCommandSource().withLevel(CarpetSettings.runPermissionLevel);
+        String hostRecipient = optionalRecipient == null?null:optionalRecipient.getName();
+        ICommandSender source = (optionalRecipient == null)? sender : optionalRecipient;
         int successes = 0;
         for (CarpetScriptHost host : modules.get(hostname).retrieveForExecution(sender, hostRecipient))
         {
             // getPlayer will always return nonnull cause retrieve for execution only returns hosts for existing players.
             ICommandSender executingSource = host.perUser
-                    ? source.getMinecraftServer().getPlayerManager().getPlayer(host.user).getCommandSource()
-                    : source.getMinecraftServer().getCommandSource();
+                    ? source.getServer().getPlayerList().getPlayerByUsername(host.user)
+                    : source;
             try
             {
-                host.callUDF(BlockPos.ORIGIN, source.withLevel(CarpetSettings.runPermissionLevel), udf, argv);
+                host.callUDF(BlockPos.ORIGIN, source, udf, argv);
             }
             catch (NullPointerException | InvalidCallbackException npe)
             {
@@ -421,19 +390,10 @@ public class CarpetScriptServer
         }
     }
 
-    public void onPlayerJoin(ServerPlayerEntity player)
-    {
-        modules.values().forEach(h ->
-        {
-            if (h.isPerUser())
-            {
-                try
-                {
-                    h.retrieveOwnForExecution(player.getCommandSource());
-                }
-                catch (CommandSyntaxException ignored)
-                {
-                }
+    public void onPlayerJoin(EntityPlayerMP player) {
+        modules.values().forEach(h -> {
+            if (h.isPerUser()) {
+                h.retrieveOwnForExecution(player);
             }
         });
     }
@@ -455,10 +415,10 @@ public class CarpetScriptServer
     {
         Map<String, TransferData> apps = new HashMap<>();
         modules.forEach((s, h) -> apps.put(s, new TransferData(h)));
-        apps.keySet().forEach(s -> removeScriptHost(server.getCommandSource(), s, false, false));
+        apps.keySet().forEach(s -> removeScriptHost(server, s, false, false));
         CarpetEventServer.Event.clearAllBuiltinEvents();
         init();
-        apps.forEach((s, data) -> addScriptHost(server.getCommandSource(), s,data.commandValidator, data.perUser,false, data.isRuleApp));
+        apps.forEach((s, data) -> addScriptHost(server, s,data.commandValidator, data.perUser,false, data.isRuleApp));
     }
 
     public void reAddCommands()

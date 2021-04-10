@@ -4,7 +4,6 @@ import carpet.patches.EntityPlayerMPFake;
 import carpet.script.argument.Vector3Argument;
 import carpet.script.exception.InternalExpressionException;
 import net.minecraft.command.EntitySelector;
-import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityAgeable;
 import net.minecraft.entity.EntityLiving;
@@ -28,7 +27,6 @@ import net.minecraft.world.GameType;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -1192,7 +1190,7 @@ public class EntityValue extends Value
         });
 
         put("exhaustion", (e, v) -> {
-            if (e instanceof EntityPlayer) ((EntityPlayer) e).getFoodStats().setExhaustion(NumericValue.asNumber(v, "exhaustion").getFloat());
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).getFoodStats().setFoodExhaustionLevel(NumericValue.asNumber(v, "exhaustion").getFloat());
         });
 
         put("absorption", (e, v) -> {

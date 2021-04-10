@@ -1,18 +1,15 @@
 package carpet.script.command;
 
 import carpet.script.CarpetScriptHost;
+import carpet.script.exception.InternalExpressionException;
 import carpet.script.value.FunctionValue;
 import com.google.common.collect.Lists;
-import com.mojang.brigadier.builder.ArgumentBuilder;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.server.command.ServerCommandSource;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import static net.minecraft.server.command.CommandManager.literal;
 
 public class CommandToken implements Comparable<CommandToken>
 {
@@ -41,7 +38,7 @@ public class CommandToken implements Comparable<CommandToken>
         return new CommandToken(source, arg);
     }
 
-    public static List<CommandToken> parseSpec(String spec, CarpetScriptHost host) throws CommandSyntaxException
+    public static List<CommandToken> parseSpec(String spec, CarpetScriptHost host)
     {
         spec = spec.trim();
         if (spec.isEmpty()) return Collections.emptyList();
@@ -49,7 +46,7 @@ public class CommandToken implements Comparable<CommandToken>
         for (String el: spec.split("\\s+"))
         {
             CommandToken tok = CommandToken.getToken(el, host);
-            if (tok == null) throw CommandArgument.error("Unrecognized command token: "+ el);
+            if (tok == null) throw new InternalExpressionException("Unrecognized command token: "+ el);
             elements.add(tok);
         }
         return elements;
@@ -62,14 +59,6 @@ public class CommandToken implements Comparable<CommandToken>
         return String.join(" ", tokens);
     }
 
-
-    public ArgumentBuilder<ServerCommandSource, ?> getCommandNode(CarpetScriptHost host) throws CommandSyntaxException
-    {
-        if (isArgument)
-            return CommandArgument.argumentNode(surface, host);
-        return literal(surface);
-
-    }
 
     @Override
     public boolean equals(Object o)

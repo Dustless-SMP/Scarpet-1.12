@@ -1,27 +1,20 @@
 package carpet.script.utils;
 
-import carpet.CarpetServer;
 import carpet.CarpetSettings;
 import carpet.script.CarpetContext;
 import carpet.script.CarpetScriptHost;
-import carpet.script.value.BooleanValue;
 import carpet.script.value.ListValue;
 import carpet.script.value.MapValue;
 import carpet.script.value.NumericValue;
 import carpet.script.value.StringValue;
 import carpet.script.value.Value;
-import carpet.script.value.ValueConversions;
-import carpet.settings.ParsedRule;
-import carpet.settings.SettingsManager;
 import com.sun.management.OperatingSystemMXBean;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.SharedConstants;
-import net.minecraft.util.WorldSavePath;
 import net.minecraft.world.GameRules;
 
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,45 +33,38 @@ public class SystemInfo {
         put("app_scope", c -> StringValue.of((c.host).isPerUser()?"player":"global"));
         put("app_players", c -> ListValue.wrap(c.host.getUserList().stream().map(StringValue::new).collect(Collectors.toList())));
 
-        put("world_name", c -> new StringValue(c.s.getMinecraftServer().getSaveProperties().getLevelName()));
-        put("world_seed", c -> new NumericValue(c.s.getWorld().getSeed()));
-        put("server_motd", c -> StringValue.of(c.s.getMinecraftServer().getServerMotd()));
-        put("world_path", c -> StringValue.of(c.s.getMinecraftServer().getSavePath(WorldSavePath.ROOT).toString()));
+        put("world_name", c -> new StringValue(c.s.getServer().getName()));//todo redo this cos it doesnt work
+        put("world_seed", c -> new NumericValue(c.s.getEntityWorld().getSeed()));
+        put("server_motd", c -> StringValue.of(c.s.getServer().getMOTD()));
+        put("world_path", c -> StringValue.of(c.s.getServer().getDataDirectory().getPath()));
         put("world_folder", c -> {
-            Path serverPath = c.s.getMinecraftServer().getSavePath(WorldSavePath.ROOT);
+            Path serverPath = c.s.getServer().getDataDirectory().toPath();
             int nodeCount = serverPath.getNameCount();
             if (nodeCount < 2) return Value.NULL;
             String tlf = serverPath.getName(nodeCount-2).toString();
             return StringValue.of(tlf);
         });
-        put("world_dimensions", c -> ListValue.wrap(c.s.getMinecraftServer().getWorldRegistryKeys().stream().map(k -> ValueConversions.of(k.getValue())).collect(Collectors.toList())));
-        put("game_difficulty", c -> StringValue.of(c.s.getMinecraftServer().getSaveProperties().getDifficulty().getName()));
-        put("game_hardcore", c -> new NumericValue(c.s.getMinecraftServer().getSaveProperties().isHardcore()));
-        put("game_storage_format", c -> StringValue.of(c.s.getMinecraftServer().getSaveProperties().getFormatName(c.s.getMinecraftServer().getSaveProperties().getVersion())));
-        put("game_default_gamemode", c -> StringValue.of(c.s.getMinecraftServer().getDefaultGameMode().getName()));
-        put("game_max_players", c -> new NumericValue(c.s.getMinecraftServer().getMaxPlayerCount()));
-        put("game_view_distance", c -> new NumericValue(c.s.getMinecraftServer().getPlayerManager().getViewDistance()));
-        put("game_mod_name", c -> StringValue.of(c.s.getMinecraftServer().getServerModName()));
-        put("game_version", c -> StringValue.of(c.s.getMinecraftServer().getVersion()));
-        put("game_target", c -> StringValue.of(SharedConstants.getGameVersion().getReleaseTarget()));
-        put("game_protocol", c -> NumericValue.of(SharedConstants.method_31372()));
-        put("game_major_target", c -> {
-            String [] vers = SharedConstants.getGameVersion().getReleaseTarget().split("\\.");
-            return NumericValue.of((vers.length > 1)?Integer.parseInt(vers[1]):0);
-        });
-        put("game_minor_target", c -> {
-            String [] vers = SharedConstants.getGameVersion().getReleaseTarget().split("\\.");
-            return NumericValue.of((vers.length > 2)?Integer.parseInt(vers[2]):0);
-        });
-        put("game_stable", c -> BooleanValue.of(SharedConstants.getGameVersion().isStable()));
-        put("game_data_version", c->NumericValue.of(SharedConstants.getGameVersion().getWorldVersion()));
-        put("game_pack_version", c->NumericValue.of(SharedConstants.getGameVersion().getPackVersion()));
+        put("world_dimensions", c -> ListValue.wrap(Arrays.stream(c.s.getServer().worlds).map(k->StringValue.of(k.toString())).collect(Collectors.toList())));//todo dimensions properly
+        put("game_difficulty", c -> StringValue.of(c.s.getServer().getDifficulty().getTranslationKey()));
+        put("game_hardcore", c -> new NumericValue(c.s.getServer().isHardcore()));
+        //todo figure out
+        //put("game_storage_format", c -> StringValue.of(c.s.getServer().getSaveProperties().getFormatName(c.s.getServer().getSaveProperties().getVersion())));
+        put("game_mode", c -> StringValue.of(c.s.getServer().getGameType().getName()));
+        put("game_max_players", c -> new NumericValue(c.s.getServer().getMaxPlayers()));
+        put("game_view_distance", c -> new NumericValue(c.s.getServer().getPlayerList().getViewDistance()));
+        put("game_mod_name", c -> StringValue.of(c.s.getServer().getServerModName()));
+        put("game_version", c -> StringValue.of(c.s.getServer().getMinecraftVersion()));
+        //todo game stability
+        //put("game_stable", c -> BooleanValue.of(SharedConstants.getGameVersion().isStable()));
+        //put("game_data_version", c->NumericValue.of(SharedConstants.getGameVersion().getWorldVersion()));
+        //put("game_pack_version", c->NumericValue.of(SharedConstants.getGameVersion().getPackVersion()));
 
-        put("server_ip", c -> StringValue.of(c.s.getMinecraftServer().getServerIp()));
-        put("server_whitelisted", c -> new NumericValue(c.s.getMinecraftServer().isEnforceWhitelist()));
+        //todo ip
+        //put("server_ip", c -> StringValue.of(c.s.getServer().ip?()));
+        put("server_whitelisted", c -> new NumericValue(c.s.getServer().getPlayerList().isWhiteListEnabled()));
         put("server_whitelist", c -> {
             MapValue whitelist = new MapValue(Collections.emptyList());
-            for (String s: c.s.getMinecraftServer().getPlayerManager().getWhitelistedNames())
+            for (String s: c.s.getServer().getPlayerList().getWhitelistedPlayerNames())
             {
                 whitelist.append(StringValue.of(s));
             }
@@ -86,7 +72,7 @@ public class SystemInfo {
         });
         put("server_banned_players", c -> {
             MapValue whitelist = new MapValue(Collections.emptyList());
-            for (String s: c.s.getMinecraftServer().getPlayerManager().getUserBanList().getNames())
+            for (String s: c.s.getServer().getPlayerList().getBannedPlayers().getKeys())
             {
                 whitelist.append(StringValue.of(s));
             }
@@ -94,13 +80,14 @@ public class SystemInfo {
         });
         put("server_banned_ips", c -> {
             MapValue whitelist = new MapValue(Collections.emptyList());
-            for (String s: c.s.getMinecraftServer().getPlayerManager().getIpBanList().getNames())
+            for (String s: c.s.getServer().getPlayerList().getBannedIPs().getKeys())
             {
                 whitelist.append(StringValue.of(s));
             }
             return whitelist;
         });
-        put("server_dev_environment", c-> new NumericValue(FabricLoader.getInstance().isDevelopmentEnvironment()));
+        //todo dev env (can it be done?)
+        //put("server_dev_environment", c-> new NumericValue(FabricLoader.getInstance().isDevelopmentEnvironment()));
 
         put("java_max_memory", c -> new NumericValue(Runtime.getRuntime().maxMemory()));
         put("java_allocated_memory", c -> new NumericValue(Runtime.getRuntime().totalMemory()));
@@ -128,31 +115,18 @@ public class SystemInfo {
             return new NumericValue(osBean.getProcessCpuLoad());
         });
         put("world_carpet_rules", c -> {
-            Collection<ParsedRule<?>> rules = CarpetServer.settingsManager.getRules();
-            MapValue carpetRules = new MapValue(Collections.emptyList());
-            rules.forEach(rule -> {
-                carpetRules.put(new StringValue(rule.name), new StringValue(rule.getAsString()));
+            Map<Value, Value> rules = new HashMap<>();
+            Map<String, Field> carpetRules = CarpetSettings.getRules();
+            carpetRules.forEach((k,v)->{
+                rules.put(StringValue.of(k), StringValue.of(v.toString()));//todo check if this works...
             });
-            CarpetServer.extensions.forEach(e -> {
-                SettingsManager manager = e.customSettingsManager();
-                if (manager == null) return;
-
-                Collection<ParsedRule<?>> extensionRules = manager.getRules();
-                extensionRules.forEach(rule -> {
-                    carpetRules.put(new StringValue(manager.getIdentifier()+":"+rule.name), new StringValue(rule.getAsString()));
-                });
-            });
-            return carpetRules;
+            return MapValue.wrap(rules);
         });
         put("world_gamerules", c->{
             Map<Value, Value> rules = new HashMap<>();
-            final GameRules gameRules = c.s.getWorld().getGameRules();
-            GameRules.accept(new GameRules.Visitor() {
-                @Override
-                public <T extends GameRules.Rule<T>> void visit(GameRules.Key<T> key, GameRules.Type<T> type) {
-                    rules.put(StringValue.of(key.getName()), StringValue.of(gameRules.get(key).toString()));
-                }
-            });
+            final GameRules gameRules = c.s.getEntityWorld().getGameRules();
+            Arrays.stream(gameRules.getRules()).collect(Collectors.toList()).forEach(gr->rules.put(StringValue.of(gr), StringValue.of(gameRules.getString(gr))));
+
             return MapValue.wrap(rules);
         });
         put("scarpet_version", c -> StringValue.of(CarpetSettings.carpetVersion));

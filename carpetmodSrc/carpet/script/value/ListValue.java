@@ -5,7 +5,6 @@ import carpet.script.exception.InternalExpressionException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTPrimitive;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagDouble;
 import net.minecraft.nbt.NBTTagLong;
@@ -528,9 +527,9 @@ public class ListValue extends AbstractListValue implements ContainerValueInterf
         }
         // only numbers / mixed types
         if (cases.contains(TagTypeCompat.DBL))
-            tags.forEach(t -> tag.appendTag(new NBTTagDouble(((NBTPrimitive)t).getDouble())));
+            tags.forEach(t -> tag.appendTag((NBTTagDouble) t));
         else
-            tags.forEach(t -> tag.appendTag(new NBTTagLong(((NBTPrimitive)t).getLong())));
+            tags.forEach(t -> tag.appendTag((NBTTagLong) t));
 
         return tag;
     }

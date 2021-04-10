@@ -1128,6 +1128,10 @@ public class CarpetSettings
         }
     }
 
+    public static Map<String, Field> getRules(){
+        return rules;
+    }
+
     public static boolean hasRule(String ruleName) {
         return rules.containsKey(ruleName.toLowerCase(Locale.ENGLISH));
     }

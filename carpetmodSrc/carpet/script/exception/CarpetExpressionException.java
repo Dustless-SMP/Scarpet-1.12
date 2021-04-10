@@ -2,7 +2,7 @@ package carpet.script.exception;
 
 import carpet.script.value.FunctionValue;
 import carpet.utils.Messenger;
-import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.command.ICommandSender;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ public class CarpetExpressionException extends RuntimeException implements Resol
         super(message);
         this.stack = stack;
     }
-    public void printStack(ServerCommandSource source)
+    public void printStack(ICommandSender source)
     {
         if (stack != null && !stack.isEmpty())
         {

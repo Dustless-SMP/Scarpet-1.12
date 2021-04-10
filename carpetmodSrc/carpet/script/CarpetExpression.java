@@ -17,20 +17,20 @@ import carpet.script.value.EntityValue;
 import carpet.script.value.NumericValue;
 import carpet.script.value.Value;
 import net.minecraft.entity.Entity;
-import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.command.ICommandSender;
 import net.minecraft.util.math.BlockPos;
 
 public class CarpetExpression
 {
-    private final ServerCommandSource source;
+    private final ICommandSender source;
     private final BlockPos origin;
     private final Expression expr;
     // these are for extensions
     public Expression getExpr() {return expr;}
-    public ServerCommandSource getSource() {return source;}
+    public ICommandSender getSource() {return source;}
     public BlockPos getOrigin() {return origin;}
 
-    public CarpetExpression(Module module, String expression, ServerCommandSource source, BlockPos origin)
+    public CarpetExpression(Module module, String expression, ICommandSender source, BlockPos origin)
     {
         this.origin = origin;
         this.source = source;
@@ -45,7 +45,6 @@ public class CarpetExpression
         Threading.apply(this.expr);
         Scoreboards.apply(this.expr);
         Monitoring.apply(this.expr);
-        CarpetServer.extensions.forEach(e -> e.scarpetApi(this));
     }
 
     public boolean fillAndScanCommand(ScriptHost host, int x, int y, int z)
@@ -58,10 +57,9 @@ public class CarpetExpression
                     with("x", (c, t) -> new NumericValue(x - origin.getX()).bindTo("x")).
                     with("y", (c, t) -> new NumericValue(y - origin.getY()).bindTo("y")).
                     with("z", (c, t) -> new NumericValue(z - origin.getZ()).bindTo("z")).
-                    with("_", (c, t) -> new BlockValue(null, source.getWorld(), new BlockPos(x, y, z)).bindTo("_"));
-            Entity e = source.getEntity();
-            if (e==null)
-            {
+                    with("_", (c, t) -> new BlockValue(null, source.getServer().getWorld(source.getCommandSenderEntity().dimension), new BlockPos(x, y, z)).bindTo("_"));
+            Entity e = source.getCommandSenderEntity();
+            if (e==null) {
                 Value nullPlayer = Value.NULL.reboundedTo("p");
                 context.with("p", (cc, tt) -> nullPlayer );
             }
@@ -92,9 +90,8 @@ public class CarpetExpression
                     with("x", (c, t) -> new NumericValue(pos.getX() - origin.getX()).bindTo("x")).
                     with("y", (c, t) -> new NumericValue(pos.getY() - origin.getY()).bindTo("y")).
                     with("z", (c, t) -> new NumericValue(pos.getZ() - origin.getZ()).bindTo("z"));
-            Entity e = source.getEntity();
-            if (e==null)
-            {
+            Entity e = source.getCommandSenderEntity();
+            if (e==null) {
                 Value nullPlayer = Value.NULL.reboundedTo("p");
                 context.with("p", (cc, tt) -> nullPlayer );
             }
