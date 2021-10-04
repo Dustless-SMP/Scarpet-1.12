@@ -44,7 +44,7 @@ public class CarpetSettings
     public static boolean locked = false;
 
     // TODO: replace these constants at build time
-    public static final String carpetVersion = "v21_01_06b";
+    public static final String carpetVersion = "v21_07_25";
     public static final String minecraftVersion = "1.12.2";
     public static final String mcpMappings = "39-1.12";
 
@@ -95,6 +95,11 @@ public class CarpetSettings
     @Rule(desc = "Enables /entityinfo command", category = COMMANDS, extra = {
             "Also enables yellow carpet placement action if 'carpets' rule is turned on as well"
     })
+    public static boolean commandLazyChunkBehavior = false;
+    @Rule(desc = "Enables /lazychunkbehavior command", category = COMMANDS, extra = {
+            "Makes a chunk act like a lazy chunk for entities and falling sand"
+    })
+    
     public static boolean commandEntityInfo = true;
 
     @Rule(desc = "Enables /unload command to inspect chunk unloading order", category = COMMANDS)
@@ -222,6 +227,9 @@ public class CarpetSettings
 
     @Rule(desc = "Enables controlable TNT jump angle RNG for debuging.", category = TNT)
     public static boolean TNTAdjustableRandomAngle;
+
+    @Rule(desc = "/tp will teleport the players across dimensions", category = CREATIVE)
+    public static boolean tpAcrossDimensions = true;
 
     @Rule(desc = "Allows to place blocks in different orientations. Requires Carpet Client", category = CREATIVE, extra = {
             "Also prevents rotations upon placement of dispensers and furnaces",
@@ -971,6 +979,8 @@ public class CarpetSettings
     @Rule(desc = "Disables placement of the bedrock item", category = FEATURE)
     public static boolean disableBedrockPlacement = false;
 
+    @Rule(desc = "Changes default tnt fuse.", category = CREATIVE, validator = "validatePositive", options = {"70", "80", "100"})
+    public static int tntFuseLength = 80;
     // ===== API ===== //
 
     /**
