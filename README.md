@@ -4,7 +4,7 @@ infrastructure of carpet mod (not much tho tbh).
 
 ## Credits
 
-The code for this version of scarpet is basically a copy pasta of [the original scarpet's code](https://github.com/gnembon/fabric-carpet)
+The code for this version of scarpet is basically a copy pasta of [the first scarpet's code](https://github.com/gnembon/carpetmod), 1.13.2, which is a lot easier to put into mc.
 
 ## Getting Started
 ### Setting up your sources
