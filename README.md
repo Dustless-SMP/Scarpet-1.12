@@ -4,7 +4,11 @@ infrastructure of carpet mod (not much tho tbh).
 
 ## Credits
 
-The code for this version of scarpet is basically a copy pasta of [the first scarpet's code](https://github.com/gnembon/carpetmod), 1.13.2, which is a lot easier to put into mc.
+The code for this version of scarpet is basically a copy pasta of [the first scarpet's code](https://github.com/gnembon/carpetmod),
+1.13.2, which is a lot easier to put into mc. The original plan was to use this, but then I found https://github.com/Advait-Sen/ScarpetInterpreter
+which does the hard work for me.
+
+Note that here we use a simplified fork of that (https://github.com/Dustless-SMP/ScarpetInterpreter), which doesn't contain so much of the mathsy stuff.
 
 ## Getting Started
 ### Setting up your sources
