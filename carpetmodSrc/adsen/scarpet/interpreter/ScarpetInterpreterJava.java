@@ -1,7 +1,8 @@
 package adsen.scarpet.interpreter;
 
-import adsen.scarpet.interpreter.parser.ScarpetScriptServer;
 import adsen.scarpet.interpreter.parser.Expression;
+import adsen.scarpet.interpreter.parser.ScarpetScriptServer;
+import adsen.scarpet.interpreter.parser.exception.ExitStatement;
 import adsen.scarpet.interpreter.parser.exception.ExpressionException;
 
 import java.util.Scanner;
@@ -16,9 +17,12 @@ public class ScarpetInterpreterJava {
         Scanner scanner = new Scanner(System.in);
         String input = scanner.nextLine();
 
-        while (!input.equalsIgnoreCase("end")) {
+        while (true) {
             try {
                 new Expression(input).displayOutput();
+            } catch (ExitStatement exit) {
+                System.out.println("Exited");
+                break;
             } catch (ExpressionException e) {
                 System.out.println(e.getMessage());
             } catch (Throwable t) {

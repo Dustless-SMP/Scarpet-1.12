@@ -10,7 +10,6 @@ import adsen.scarpet.interpreter.parser.Fluff.ILazyOperator;
 import adsen.scarpet.interpreter.parser.Fluff.QuadFunction;
 import adsen.scarpet.interpreter.parser.Fluff.SexFunction;
 import adsen.scarpet.interpreter.parser.Fluff.TriFunction;
-import adsen.scarpet.interpreter.parser.exception.ExitStatement;
 import adsen.scarpet.interpreter.parser.exception.ExpressionException;
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
 import adsen.scarpet.interpreter.parser.exception.ReturnStatement;
@@ -45,15 +44,15 @@ import static java.lang.Math.min;
 public class Expression implements Cloneable {
     static Expression none = new Expression("null");
     /**
-     * The function used to print, must accept a string, and can be use to display results however you want.
-     * By default set to {@link System#out#println(String)}, so it prints to command line, but can be set to whatever you want.
-     */
-    private static Consumer<String> printFunction = System.out::println;
-    /**
      * script specific operators and built-in functions
      */
     private final Map<String, ILazyOperator> operators = new HashMap<>();
     private final Map<String, ILazyFunction> functions = new HashMap<>();
+    /**
+     * The function used to print, must accept a string, and can be use to display results however you want.
+     * By default set to {@link System#out#println(String)}, so it prints to command line, but can be set to whatever you want.
+     */
+    private final Consumer<String> printFunction = System.out::println;
     /**
      * The current infix expression
      */
@@ -124,29 +123,9 @@ public class Expression implements Cloneable {
         return output;
     }
 
-    /**
-     * Prints a function to the screen, in a manner specified by {@link Expression#printFunction}
-     *
-     * @param s The string to display to the user.
-     */
-    public static void print(String s) {
-        printFunction.accept(s);
-    }
-
-    /**
-     * Allows to set the printer function which scarpet will use to display its output to.
-     *
-     * @param printerFunction A function which takes one String input (and essentially presents it to the user however you want)
-     */
-    public static void setPrintFunction(Consumer<String> printerFunction) {
-        printFunction = printerFunction;
-    }
-
     static Value evalValue(Supplier<LazyValue> exprProvider, Context c, Integer expectedType) {
         try {
             return exprProvider.get().evalValue(c, expectedType);
-        } catch (ExitStatement exit) {
-            return exit.retval;
         } catch (StackOverflowError ignored) {
             throw new ExpressionException("Your thoughts are too deep");
         } catch (InternalExpressionException exc) {
@@ -154,6 +133,15 @@ public class Expression implements Cloneable {
         } catch (ArithmeticException exc) {
             throw new ExpressionException("The final result is incorrect, " + exc.getMessage());
         }
+    }
+
+    /**
+     * Prints a function to the screen, in a manner specified by {@link Expression#printFunction}
+     *
+     * @param s The string to display to the user.
+     */
+    public void print(String s) {
+        printFunction.accept(s);
     }
 
     String getCodeString() {
@@ -274,6 +262,18 @@ public class Expression implements Cloneable {
                 Value v2 = parameters.get(1);
                 Value.assertNotNull(v1, v2);
                 return fun.apply(v1, v2);
+            }
+        });
+    }
+
+    public void addFunction(String name, int numParams, Function<List<Value>, Value> fun) {
+        name = name.toLowerCase(Locale.ROOT);
+        functions.put(name, new AbstractFunction(numParams) {
+            @Override
+            public Value eval(List<Value> parameters) {
+                for (Value v : parameters)
+                    Value.assertNotNull(v);
+                return fun.apply(parameters);
             }
         });
     }
@@ -532,7 +532,11 @@ public class Expression implements Cloneable {
         }
     }
 
-    public void displayOutput() {//Displays the output, i.e the finally evaluated expression.
+    public void displayOutput() {
+        displayOutput(System.out::println);
+    }
+
+    public void displayOutput(Consumer<String> printerFunction) {//Displays the output, i.e the finally evaluated expression.
         try {
             printFunction.accept(" = " + eval(Context.simpleParse()).getString());
         } catch (ExpressionException e) {

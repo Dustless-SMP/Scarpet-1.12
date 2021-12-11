@@ -1,0 +1,14 @@
+--- ../src-base/minecraft/net/minecraft/util/FoodStats.java
++++ ../src-work/minecraft/net/minecraft/util/FoodStats.java
+@@ -123,6 +123,11 @@
+         this.field_75126_c = Math.min(this.field_75126_c + p_75113_1_, 40.0F);
+     }
+ 
++    //CM
++    public float getFoodExhaustionLevel(){
++        return field_75126_c;
++    }
++
+     public float func_75115_e()
+     {
+         return this.field_75125_b;

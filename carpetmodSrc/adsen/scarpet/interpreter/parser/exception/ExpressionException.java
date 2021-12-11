@@ -15,7 +15,7 @@ public class ExpressionException extends RuntimeException {
     public static Fluff.TriFunction<Expression, Tokenizer.Token, String, List<String>> errorSnooper = null;
     private static Fluff.TriFunction<Expression, Tokenizer.Token, String, List<String>> errorMaker = (expr, token, errmessage) ->
     {
-        Expression.print(token.toString());
+        expr.print(token.toString());
         List<String> snippet = Expression_getExpressionSnippet(token,
                 expr);
         List<String> errMsg = new ArrayList<>(snippet);

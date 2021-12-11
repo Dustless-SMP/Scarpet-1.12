@@ -264,7 +264,19 @@
      public boolean func_184812_l_()
      {
          return this.field_71134_c.func_73081_b() == GameType.CREATIVE;
-@@ -1439,4 +1502,113 @@
+@@ -1292,6 +1355,11 @@
+         this.func_184212_Q().func_187227_b(field_184828_bq, Byte.valueOf((byte)(p_147100_1_.func_186991_f() == EnumHandSide.LEFT ? 0 : 1)));
+     }
+ 
++    //CM
++    public String getLanguage() {
++        return field_71148_cg;
++    }
++
+     public EntityPlayer.EnumChatVisibility func_147096_v()
+     {
+         return this.field_71143_cn;
+@@ -1439,4 +1507,113 @@
      {
          return this.field_193110_cw;
      }

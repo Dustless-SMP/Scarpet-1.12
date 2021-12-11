@@ -24,7 +24,7 @@ public class SystemFunctions {
     public static void apply(Expression expression) {
         expression.addUnaryFunction("print", v -> {
             String s = v.getString();
-            Expression.print(s);
+            expression.print(s);
             return StringValue.of(s);
         });
         expression.addLazyFunction("bool", 1, (c, t, lv) -> {

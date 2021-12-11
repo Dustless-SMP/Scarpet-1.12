@@ -1,5 +1,7 @@
 package carpet.commands;
 
+import adsen.scarpet.interpreter.parser.Expression;
+import carpet.script.CarpetScarpetExpression;
 import carpet.utils.Messenger;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -49,11 +51,21 @@ public class CommandScript extends CommandCarpetBase {
         if (!command_enabled("commandScript", sender))
             return;
 
-        if (args.length<2)
+        if (args.length < 2)
             throw new WrongUsageException(getUsage(sender));
 
-        Messenger.m(sender, (Object[]) args);
-        Messenger.m(sender, "This what you wanted?");
+        Messenger.m(sender, "gi " + Arrays.toString(args));
+
+        StringBuilder scriptBuilder = new StringBuilder();
+        for(int i = 1; i<args.length; i++){
+            scriptBuilder.append(args[i]);
+        }
+
+        String script = scriptBuilder.toString();
+
+        Messenger.m(sender, "gi "+script);
+        CarpetScarpetExpression cse = new CarpetScarpetExpression(script);
+        cse.expr.displayOutput(s->Messenger.m(sender, "gi " + s));
     }
 
     /**
@@ -63,7 +75,7 @@ public class CommandScript extends CommandCarpetBase {
      */
     @Override
     public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
-        if(args.length == 1) return Collections.singletonList("run");
+        if (args.length == 1) return Collections.singletonList("run");
         return Collections.emptyList();
     }
 }

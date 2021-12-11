@@ -63,16 +63,16 @@ public class ScarpetScriptServer {
             if (expr.getName() != null) {
                 shebang += " in " + expr.getName() + "";
             }
-            Expression.print("r " + shebang);
+            expr.print("r " + shebang);
 
             if (lines.length > 1 && token.lineNo > 0) {
-                Expression.print("l " + lines[token.lineNo - 1]);
+                expr.print("l " + lines[token.lineNo - 1]);
             }
-            Expression.print("l " + lines[token.lineNo].substring(0, token.linePos) + "r  HERE>> " + "l " +
+            expr.print("l " + lines[token.lineNo].substring(0, token.linePos) + "r  HERE>> " + "l " +
                     lines[token.lineNo].substring(token.linePos));
 
             if (lines.length > 1 && token.lineNo < lines.length - 1) {
-                Expression.print("l " + lines[token.lineNo + 1]);
+                expr.print("l " + lines[token.lineNo + 1]);
             }
             return new ArrayList<>();
         };
@@ -80,18 +80,6 @@ public class ScarpetScriptServer {
 
     public void resetErrorSnooper() {
         ExpressionException.errorSnooper = null;
-    }
-
-    public boolean removeScriptHost(String name) {
-        name = name.toLowerCase(Locale.ROOT);
-        if (!modules.containsKey(name)) {
-            Expression.print("r No such host found: " + "wb  " + name);
-            return false;
-        }
-        // stop all events associated with name
-        modules.remove(name);
-        Expression.print("w Removed host " + name);
-        return true;
     }
 
     public boolean runas(String hostname, String udf_name, List<LazyValue> argv) {

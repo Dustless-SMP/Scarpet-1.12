@@ -53,7 +53,24 @@
                  this.field_73092_a.func_175715_c(this.field_73090_b.func_145782_y(), p_180784_1_, i);
                  this.field_73094_o = i;
              }
-@@ -235,8 +253,10 @@
+@@ -225,6 +243,16 @@
+         }
+     }
+ 
++    //CM
++    public BlockPos getDestroyPos(){
++        return field_180240_f;
++    }
++
++    //CM
++    public int getDurabilityRemainingOnBlock() {
++        return field_73094_o;
++    }
++
+     public void func_180238_e()
+     {
+         this.field_73088_d = false;
+@@ -235,8 +263,10 @@
      {
          IBlockState iblockstate = this.field_73092_a.func_180495_p(p_180235_1_);
          iblockstate.func_177230_c().func_176208_a(this.field_73092_a, p_180235_1_, iblockstate, this.field_73090_b);
@@ -65,7 +82,7 @@
          if (flag)
          {
              iblockstate.func_177230_c().func_176206_d(this.field_73092_a, p_180235_1_, iblockstate);
-@@ -288,7 +308,15 @@
+@@ -288,7 +318,15 @@
                  }
  
                  this.field_73092_a.func_180498_a(this.field_73090_b, 2001, p_180237_1_, Block.func_176210_f(iblockstate));
@@ -82,7 +99,7 @@
  
                  if (this.func_73083_d())
                  {
-@@ -307,10 +335,19 @@
+@@ -307,10 +345,19 @@
  
                      if (flag1 && flag)
                      {
@@ -102,7 +119,7 @@
                  return flag1;
              }
          }
-@@ -402,10 +439,22 @@
+@@ -402,10 +449,22 @@
          }
          else
          {

@@ -247,7 +247,20 @@
      }
  
      public boolean func_184220_m(Entity p_184220_1_)
-@@ -1966,6 +2052,18 @@
+@@ -1948,6 +2034,12 @@
+         return this.field_184245_j <= 0;
+     }
+ 
++
++    //CM
++    public boolean canBeRidden(){
++        return this.func_184228_n(null);
++    }
++
+     public void func_184226_ay()
+     {
+         for (int i = this.field_184244_h.size() - 1; i >= 0; --i)
+@@ -1966,6 +2058,18 @@
          }
      }
  
@@ -266,7 +279,7 @@
      protected void func_184200_o(Entity p_184200_1_)
      {
          if (p_184200_1_.func_184187_bx() != this)
-@@ -2398,7 +2496,10 @@
+@@ -2398,7 +2502,10 @@
                  float f = this.field_70177_z;
                  this.func_70012_b(d0, this.field_70163_u, d1, 90.0F, 0.0F);
                  Teleporter teleporter = worldserver1.func_85176_s();
@@ -277,7 +290,7 @@
                  blockpos = new BlockPos(this);
              }
  
-@@ -2578,6 +2679,10 @@
+@@ -2578,6 +2685,10 @@
  
      public EnumFacing func_174811_aO()
      {
@@ -288,7 +301,7 @@
          return EnumFacing.func_176731_b(MathHelper.func_76128_c((double)(this.field_70177_z * 4.0F / 360.0F) + 0.5D) & 3);
      }
  
-@@ -2886,4 +2991,14 @@
+@@ -2886,4 +2997,14 @@
      {
          return 1;
      }

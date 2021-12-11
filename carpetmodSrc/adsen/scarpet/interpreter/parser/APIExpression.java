@@ -7,7 +7,7 @@ import adsen.scarpet.interpreter.parser.exception.ExpressionException;
  * The class which you use to add your own functions, events, variables etc. to scarpet.
  */
 public class APIExpression {
-    private final Expression expr;
+    public final Expression expr;
 
     /**
      * @param expression expression

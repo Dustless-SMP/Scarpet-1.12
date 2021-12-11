@@ -164,7 +164,19 @@
          }
      }
  
-@@ -470,4 +535,9 @@
+@@ -450,6 +515,11 @@
+         this.field_145804_b = 32767;
+     }
+ 
++    //CM
++    public int getPickupDelay(){
++        return field_145804_b;
++    }
++
+     public void func_174867_a(int p_174867_1_)
+     {
+         this.field_145804_b = p_174867_1_;
+@@ -470,4 +540,9 @@
          this.func_174871_r();
          this.field_70292_b = 5999;
      }
