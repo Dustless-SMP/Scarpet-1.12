@@ -26,6 +26,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.UserListOpsEntry;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Collection;
@@ -469,25 +470,21 @@ public class EntityValue extends Value {
             float pitch = (float) lv.get(1).readNumber();
             e.setLocationAndAngles(newPos.x, newPos.y, newPos.z, yaw, pitch);
         });
-        //put("x", (e, a) -> new NumericValue(e.posX));
-        //put("y", (e, a) -> new NumericValue(e.posY));
-        //put("z", (e, a) -> new NumericValue(e.posZ));
-        //put("motion", (e, a) -> ValueConversions.of(e.motionX, e.motionY, e.motionZ));
-        //put("motion_x", (e, a) -> new NumericValue(e.motionX));
-        //put("motion_y", (e, a) -> new NumericValue(e.motionY));
-        //put("motion_z", (e, a) -> new NumericValue(e.motionZ));
-        //put("on_ground", (e, a) -> BooleanValue.of(e.onGround));
-        //put("name", (e, a) -> new StringValue(e.getName()));
+        put("x", (e, a) -> e.setPositionAndUpdate(a.readNumber(), e.posY, e.posZ));
+        put("y", (e, a) -> e.setPositionAndUpdate(e.posX, a.readNumber(), e.posZ));
+        put("z", (e, a) -> e.setPositionAndUpdate(e.posX, e.posY, a.readNumber()));
+        put("motion", (e, a) -> e.setVelocity(ValueConversions.vec3d(a)));
+        put("motion_x", (e, a) -> e.setVelocity(a.readNumber(), e.motionY, e.motionZ));
+        put("motion_y", (e, a) -> e.setVelocity(e.motionX, a.readNumber(), e.motionZ));
+        put("motion_z", (e, a) -> e.setVelocity(e.motionX, e.motionY, a.readNumber()));
+        put("name", (e, a) -> e.setCustomNameTag(a.getString()));
         ////put("display_name", (e, a) -> new FormattedTextValue(e.getDisplayName()));todo FormattedTextValue
         ////todo test entity type vs command name
-        //put("command_name", (e, a) -> new StringValue(EntityList.getEntityString(e)));
-        //put("type", (e, a) -> new StringValue(EntityList.getEntityString(e)));
         //put("custom_name", (e, a) -> e.hasCustomName() ? new StringValue(e.getCustomNameTag()) : Value.NULL);
-        //put("is_riding", (e, a) -> BooleanValue.of(e.isRiding()));
-        //put("is_ridden", (e, a) -> BooleanValue.of(e.isBeingRidden()));
+        //todo riding
+        //put("riding", (e, a) -> BooleanValue.of(e.isRiding()));
         //put("passengers", (e, a) -> ListValue.wrap(e.getPassengers().stream().map(EntityValue::new).collect(Collectors.toList())));
         //put("mount", (e, a) -> e.isRiding() ? new EntityValue(e.getRidingEntity()) : Value.NULL);
-        //put("unmountable", (e, a) -> BooleanValue.of(e.canBeRidden()));
         ////todo scoreboards
         ////put("scoreboard_tags", (e, a) -> ListValue.wrap(e.getScoreboardTags().stream().map(StringValue::new).collect(Collectors.toList())));
         ////put("has_scoreboard_tag", (e, a) -> BooleanValue.of(e.getScoreboardTags().contains(a.getString())));
@@ -503,13 +500,8 @@ public class EntityValue extends Value {
         ////    return BooleanValue.of(e.getType().isIn(tag));
         ////});
 //
-        //put("yaw", (e, a) -> new NumericValue(e.rotationYaw));
-        //put("head_yaw", (e, a) -> {
-        //    if (e instanceof EntityLivingBase) {
-        //        return new NumericValue(e.getRotationYawHead());
-        //    }
-        //    return Value.NULL;
-        //});
+        put("yaw", (e, a) -> e.setRotation((float) a.readNumber(), e.rotationPitch));
+        put("head_yaw", (e, a) -> e.setRotationYawHead((float) a.readNumber()));
         ////todo body yaw
         ////put("body_yaw", (e, a)-> {
         ////    if (e instanceof EntityLivingBase)
@@ -518,23 +510,41 @@ public class EntityValue extends Value {
         ////    }
         ////    return Value.NULL;
         ////});
-        //put("pitch", (e, a) -> new NumericValue(e.rotationPitch));
-        //put("look", (e, a) -> ValueConversions.of(e.getLookVec()));
-        //put("is_burning", (e, a) -> BooleanValue.of(e.isBurning()));
-        //put("fire", (e, a) -> new NumericValue(e.getFire()));
-        //put("silent", (e, a) -> BooleanValue.of(e.isSilent()));
-        //put("gravity", (e, a) -> BooleanValue.of(!e.hasNoGravity()));
-        //put("immune_to_fire", (e, a) -> BooleanValue.of(e.isImmuneToFire()));
-        //put("invulnerable", (e, a) -> BooleanValue.of(e.getIsInvulnerable()));
-        //put("dimension", (e, a) -> new NumericValue(e.dimension));
-        //put("height", (e, a) -> new NumericValue(e.height));
-        //put("width", (e, a) -> new NumericValue(e.width));
-        //put("eye_height", (e, a) -> new NumericValue(e.getEyeHeight()));
-        //put("age", (e, a) -> new NumericValue(e.ticksExisted));
-        //put("breeding_age", (e, a) -> e instanceof EntityAgeable ? new NumericValue(((EntityAgeable) e).getGrowingAge()) : Value.NULL);
-        //put("despawn_timer", (e, a) -> e instanceof EntityLivingBase ?
-        //        new NumericValue(((EntityLivingBase) e).getIdleTime()) :
-        //        e instanceof EntityItem ? new NumericValue(((EntityItem) e).getAge()) : Value.NULL);
+        put("pitch", (e, a) -> e.setRotation(e.rotationYaw, (float) a.readNumber()));
+        put("look", (e, a) -> {
+            Vec3d vec = ValueConversions.vec3d(a).normalize();
+
+            float pitch = (float) -(Math.asin(vec.y) * 57.2957795131);
+            float f2 = -MathHelper.cos(-pitch * 0.017453292F);
+            float yawDirty = (float) -Math.asin(vec.x / f2);
+            float yawClean;
+            if (vec.z >= 0) {
+                yawClean = -yawDirty;
+            } else {
+                yawClean = (float) (yawDirty - 180 * Math.signum(vec.x));
+            }
+
+            e.setRotation(yawClean, pitch);
+        });
+        put("fire", (e, a) -> e.setFire(a.readInt()));
+        put("silent", (e, a) -> e.setSilent(a.getBoolean()));
+        put("gravity", (e, a) -> e.setNoGravity(!a.getBoolean()));
+        put("immune_to_fire", (e, a) -> e.setImmuneToFire(a.getBoolean()));
+        put("invulnerable", (e, a) -> e.setEntityInvulnerable(a.getBoolean()));
+        put("dimension", (e, a) -> e.changeDimension(a.readInt()));
+        put("age", (e, a) -> e.ticksExisted = a.readInt());
+        put("breeding_age", (e, a) -> {
+            if (e instanceof EntityAgeable) {
+                EntityAgeable ea = (EntityAgeable) e;
+                ea.setGrowingAge(a.readInt());
+            }
+        });
+        put("despawn_timer", (e, a) -> {
+            if (e instanceof EntityLiving) {
+                EntityLiving el = (EntityLiving) e;
+                el.setIdleTime(a.readInt());
+            }
+        });
         ////todo items
         ////put("item", (e, a) -> (e instanceof ItemEntity)?ValueConversions.of(((ItemEntity) e).getStack()):Value.NULL);
         ////put("holds", (e, a) -> {

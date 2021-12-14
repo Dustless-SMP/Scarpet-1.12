@@ -27,9 +27,13 @@ public class ValueConversions {
     public static Vec3d vec3d(ListValue lv) {
         if (lv.length() != 3 || lv.getItems().stream().allMatch(v -> v instanceof NumericValue))
             throw new InternalExpressionException("A block-type argument must have 3 numeric coordinates");
-        Value x = lv.getItems().get(0);
-        Value y = lv.getItems().get(1);
-        Value z = lv.getItems().get(2);
-        return new Vec3d(x.readNumber(), y.readNumber(), z.readNumber());
+        double x = lv.getItems().get(0).readNumber();
+        double y = lv.getItems().get(1).readNumber();
+        double z = lv.getItems().get(2).readNumber();
+        return new Vec3d(x, y, z);
+    }
+
+    public static BlockPos blockPos(Value v){
+        return new BlockPos(vec3d(v));
     }
 }

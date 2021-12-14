@@ -126,7 +126,19 @@
  
                  for (int i6 = list1.size(); k5 < i6; ++k5)
                  {
-@@ -1140,6 +1186,8 @@
+@@ -1094,6 +1140,11 @@
+         return this.field_70178_ae;
+     }
+ 
++    //CM
++    public void setImmuneToFire(boolean immuneToFire){
++        this.field_70178_ae = immuneToFire;
++    }
++
+     public void func_180430_e(float p_180430_1_, float p_180430_2_)
+     {
+         if (this.func_184207_aI())
+@@ -1140,6 +1191,8 @@
  
      public boolean func_70072_I()
      {
@@ -135,7 +147,7 @@
          if (this.func_184187_bx() instanceof EntityBoat)
          {
              this.field_70171_ac = false;
-@@ -1159,6 +1207,7 @@
+@@ -1159,6 +1212,7 @@
          {
              this.field_70171_ac = false;
          }
@@ -143,7 +155,28 @@
  
          return this.field_70171_ac;
      }
-@@ -1533,6 +1582,9 @@
+@@ -1437,6 +1491,20 @@
+         this.field_70160_al = true;
+     }
+ 
++    //CM
++    public void func_70016_h(double p_70016_1_, double p_70016_3_, double p_70016_5_){
++        this.field_70159_w = p_70016_1_;
++        this.field_70181_x = p_70016_3_;
++        this.field_70179_y = p_70016_5_;
++        this.field_70160_al = true;
++    }
++    public void setVelocity(Vec3d velocity){
++        this.field_70159_w = velocity.field_72450_a;
++        this.field_70181_x = velocity.field_72448_b;
++        this.field_70179_y = velocity.field_72449_c;
++        this.field_70160_al = true;
++    }
++
+     protected void func_70018_K()
+     {
+         this.field_70133_I = true;
+@@ -1533,6 +1601,9 @@
  
          if (!this.field_70128_L && s != null && !this.func_184218_aH())
          {
@@ -153,7 +186,7 @@
              p_70039_1_.func_74778_a("id", s);
              this.func_189511_e(p_70039_1_);
              return true;
-@@ -1543,6 +1595,19 @@
+@@ -1543,6 +1614,19 @@
          }
      }
  
@@ -173,7 +206,7 @@
      public static void func_190533_a(DataFixer p_190533_0_)
      {
          p_190533_0_.func_188258_a(FixTypes.ENTITY, new IDataWalker()
-@@ -1619,6 +1684,11 @@
+@@ -1619,6 +1703,11 @@
                  p_189511_1_.func_74782_a("Tags", nbttaglist);
              }
  
@@ -185,7 +218,7 @@
              this.func_70014_b(p_189511_1_);
  
              if (this.func_184207_aI())
-@@ -1663,19 +1733,19 @@
+@@ -1663,19 +1752,19 @@
              this.field_70181_x = nbttaglist2.func_150309_d(1);
              this.field_70179_y = nbttaglist2.func_150309_d(2);
  
@@ -216,7 +249,7 @@
              }
  
              this.field_70165_t = nbttaglist.func_150309_d(0);
-@@ -1744,6 +1814,17 @@
+@@ -1744,6 +1833,17 @@
              {
                  this.func_70107_b(this.field_70165_t, this.field_70163_u, this.field_70161_v);
              }
@@ -234,7 +267,7 @@
          }
          catch (Throwable throwable)
          {
-@@ -1908,7 +1989,12 @@
+@@ -1908,7 +2008,12 @@
  
      public double func_70042_X()
      {
@@ -247,7 +280,7 @@
      }
  
      public boolean func_184220_m(Entity p_184220_1_)
-@@ -1948,6 +2034,12 @@
+@@ -1948,6 +2053,12 @@
          return this.field_184245_j <= 0;
      }
  
@@ -260,7 +293,7 @@
      public void func_184226_ay()
      {
          for (int i = this.field_184244_h.size() - 1; i >= 0; --i)
-@@ -1966,6 +2058,18 @@
+@@ -1966,6 +2077,18 @@
          }
      }
  
@@ -279,7 +312,7 @@
      protected void func_184200_o(Entity p_184200_1_)
      {
          if (p_184200_1_.func_184187_bx() != this)
-@@ -2398,7 +2502,10 @@
+@@ -2398,7 +2521,10 @@
                  float f = this.field_70177_z;
                  this.func_70012_b(d0, this.field_70163_u, d1, 90.0F, 0.0F);
                  Teleporter teleporter = worldserver1.func_85176_s();
@@ -290,7 +323,7 @@
                  blockpos = new BlockPos(this);
              }
  
-@@ -2578,6 +2685,10 @@
+@@ -2578,6 +2704,10 @@
  
      public EnumFacing func_174811_aO()
      {
@@ -301,7 +334,7 @@
          return EnumFacing.func_176731_b(MathHelper.func_76128_c((double)(this.field_70177_z * 4.0F / 360.0F) + 0.5D) & 3);
      }
  
-@@ -2886,4 +2997,14 @@
+@@ -2886,4 +3016,14 @@
      {
          return 1;
      }
@@ -311,7 +344,7 @@
 +    {
 +        return this.field_190534_ay;
 +    }
-+    
++
 +    public void postLoad()
 +    {
 +    }
