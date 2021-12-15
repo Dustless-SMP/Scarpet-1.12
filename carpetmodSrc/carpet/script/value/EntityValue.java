@@ -17,7 +17,9 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.attributes.AbstractAttributeMap;
 import net.minecraft.entity.ai.attributes.IAttributeInstance;
+import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.monster.IMob;
 import net.minecraft.entity.passive.EntityAmbientCreature;
 import net.minecraft.entity.passive.EntityAnimal;
@@ -28,6 +30,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.UserListOpsEntry;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.GameType;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -131,7 +134,7 @@ public class EntityValue extends Value {
 
         put("count", (e, a) -> (e instanceof EntityItem) ? new NumericValue(((EntityItem) e).getItem().getCount()) : Value.NULL);
         put("pickup_delay", (e, a) -> (e instanceof EntityItem) ? new NumericValue(((EntityItem) e).getPickupDelay()) : Value.NULL);
-        put("portal_cooldown", (e, a) -> new NumericValue(e.getPortalCooldown()));
+        put("portal_cooldown", (e, a) -> new NumericValue(e.timeUntilPortal));
         put("portal_timer", (e, a) -> new NumericValue(e.getMaxInPortalTime()));
         put("is_baby", (e, a) -> (e instanceof EntityLivingBase) ? BooleanValue.of(((EntityLivingBase) e).isChild()) : Value.NULL);
         //todo targetting
@@ -564,11 +567,25 @@ public class EntityValue extends Value {
         ////    return Value.NULL;
         ////});
 //
-        //put("count", (e, a) -> (e instanceof EntityItem) ? new NumericValue(((EntityItem) e).getItem().getCount()) : Value.NULL);
-        //put("pickup_delay", (e, a) -> (e instanceof EntityItem) ? new NumericValue(((EntityItem) e).getPickupDelay()) : Value.NULL);
-        //put("portal_cooldown", (e, a) -> new NumericValue(e.getPortalCooldown()));
-        //put("portal_timer", (e, a) -> new NumericValue(e.getMaxInPortalTime()));
-        //put("is_baby", (e, a) -> (e instanceof EntityLivingBase) ? BooleanValue.of(((EntityLivingBase) e).isChild()) : Value.NULL);
+        put("count", (e, a) -> {
+            if (e instanceof EntityItem) ((EntityItem) e).getItem().setCount(a.readInt());
+        });
+        put("pickup_delay", (e, a) -> {
+            if (e instanceof EntityItem) ((EntityItem) e).setPickupDelay(a.readInt());
+        });
+        put("portal_cooldown", (e, a) -> e.timeUntilPortal = a.readInt());
+        put("is_baby", (e, a) -> {
+            if (e instanceof EntityAgeable) {
+                EntityAgeable ea = (EntityAgeable) e;
+                ea.setGrowingAge(a.readInt());
+            } else if (e instanceof EntityArmorStand) {
+                EntityArmorStand eas = (EntityArmorStand) e;
+                eas.setSmall(a.getBoolean());
+            } else if (e instanceof EntityZombie) {
+                EntityZombie ez = (EntityZombie) e;
+                ez.setChild(a.getBoolean());
+            }
+        });
         ////todo targetting
         ////put("target", (e, a) -> {
         ////    if (e instanceof MobEntity)
@@ -598,24 +615,45 @@ public class EntityValue extends Value {
         //    }
         //    return Value.NULL;
         //});
-        //put("sneaking", (e, a) -> BooleanValue.of(e.isSneaking()));
-        //put("sprinting", (e, a) -> BooleanValue.of(e.isSprinting()));
-        //put("swimming", (e, a) -> BooleanValue.of(e.isInWater()));
-//
-        //put("air", (e, a) -> new NumericValue(e.getAir()));
-        //put("language", (e, a) -> e instanceof EntityPlayerMP ? StringValue.of(((EntityPlayerMP) e).getLanguage()) : Value.NULL);
-        //put("persistence", (e, a) -> (e instanceof EntityLiving) ? BooleanValue.of(((EntityLiving) e).isPersistenceRequired()) : Value.NULL);
-        //put("hunger", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).getFoodStats().getFoodLevel()) : Value.NULL);
-        //put("saturation", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).getFoodStats().getSaturationLevel()) : Value.NULL);
-        //put("exhaustion", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).getFoodStats().getFoodExhaustionLevel()) : Value.NULL);
-        //put("absorption", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).getAbsorptionAmount()) : Value.NULL);
-        //put("xp", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).experienceTotal) : Value.NULL);
-        //put("xp_level", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).experienceLevel) : Value.NULL);
-        //put("xp_progress", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).experience) : Value.NULL);
-        //put("score", (e, a) -> (e instanceof EntityPlayer) ? new NumericValue(((EntityPlayer) e).getScore()) : Value.NULL);
-        //put("jumping", (e, a) -> (e instanceof EntityLivingBase) ? new NumericValue(((EntityLivingBase) e).getJumping()) : Value.NULL);
-        //put("gamemode", (e, a) -> (e instanceof EntityPlayerMP) ? StringValue.of(((EntityPlayerMP) e).interactionManager.getGameType().getName()) : Value.NULL);
-        //put("gamemode_id", (e, a) -> (e instanceof EntityPlayerMP) ? new NumericValue(((EntityPlayerMP) e).interactionManager.getGameType().getID()) : Value.NULL);
+
+        put("air", (e, a) -> e.setAir(a.readInt()));
+        put("persistence", (e, a) -> {
+            if (e instanceof EntityLiving) ((EntityLiving) e).setPersistence(a.getBoolean());
+        });
+        put("hunger", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).getFoodStats().setFoodLevel(a.readInt());
+        });
+        put("saturation", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).getFoodStats().setSaturationLevel((float) a.readNumber());
+        });
+        put("exhaustion", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).getFoodStats().setExhaustionLevel((float) a.readNumber());
+        });
+        put("absorption", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).setAbsorptionAmount((float) a.readNumber());
+        });
+        put("xp", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).experienceTotal = a.readInt();
+        });
+        put("xp_progress", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).experience = a.readInt();
+        });
+        put("score", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).setScore(a.readInt());
+        });
+        put("jump", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).jump();
+        });
+        put("jumping", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).setJumping(a.getBoolean());
+        });
+        put("gamemode", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).setGameType(GameType.valueOf(a.getString()));
+        });
+        put("gamemode_id", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).setGameType(GameType.getByID(a.readInt()));
+        });
+
         ////todo pathing/AI stuff
         ////put("path", (e, a) -> {
         ////    if (e instanceof MobEntity)

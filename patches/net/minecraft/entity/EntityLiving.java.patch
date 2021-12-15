@@ -45,7 +45,7 @@
  
          p_70014_1_.func_74757_a("LeftHanded", this.func_184638_cS());
  
-@@ -1143,6 +1158,11 @@
+@@ -1143,6 +1158,16 @@
          this.field_82179_bU = true;
      }
  
@@ -54,10 +54,15 @@
 +        return field_82179_bU;
 +    }
 +
++    //CM
++    public void setPersistence(boolean persistence){
++        field_82179_bU = persistence;
++    }
++
      public void func_184642_a(EntityEquipmentSlot p_184642_1_, float p_184642_2_)
      {
          switch (p_184642_1_.func_188453_a())
-@@ -1414,4 +1434,33 @@
+@@ -1414,4 +1439,33 @@
          IN_AIR,
          IN_WATER;
      }

@@ -8,3 +8,13 @@
      protected final void func_70105_a(float p_70105_1_, float p_70105_2_)
      {
          double d0 = this.field_70165_t;
+@@ -771,7 +772,8 @@
+         return this.func_181026_s() ? EnumPushReaction.IGNORE : super.func_184192_z();
+     }
+ 
+-    private void func_175420_a(boolean p_175420_1_)
++    //CM change from private to public
++    public void func_175420_a(boolean p_175420_1_)
+     {
+         this.field_70180_af.func_187227_b(field_184801_a, Byte.valueOf(this.func_184797_a(((Byte)this.field_70180_af.func_187225_a(field_184801_a)).byteValue(), 1, p_175420_1_)));
+         this.func_70105_a(0.5F, 1.975F);

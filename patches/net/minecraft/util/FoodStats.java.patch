@@ -1,6 +1,6 @@
 --- ../src-base/minecraft/net/minecraft/util/FoodStats.java
 +++ ../src-work/minecraft/net/minecraft/util/FoodStats.java
-@@ -123,6 +123,11 @@
+@@ -123,11 +123,26 @@
          this.field_75126_c = Math.min(this.field_75126_c + p_75113_1_, 40.0F);
      }
  
@@ -12,3 +12,18 @@
      public float func_75115_e()
      {
          return this.field_75125_b;
+     }
+ 
++    //CM
++    public void setSaturationLevel(float saturation) {
++        this.field_75125_b = saturation;
++    }
++
++    //CM
++    public void setExhaustionLevel(float exhaustion) {
++        this.field_75126_c = exhaustion;
++    }
++
+     public void func_75114_a(int p_75114_1_)
+     {
+         this.field_75127_a = p_75114_1_;
