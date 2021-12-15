@@ -1020,6 +1020,11 @@ public class EntityValue extends Value {
     }
 
     @Override
+    public JsonElement toJson(){
+        return new JsonPrimitive(getString());
+    }
+
+    @Override
     public int hashCode() {
         return getEntity().hashCode();
     }
