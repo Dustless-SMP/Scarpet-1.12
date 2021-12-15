@@ -356,7 +356,7 @@ public class Expression implements Cloneable {
                 Value retVal;
                 boolean rethrow = false;
                 try {
-                    retVal = code.evalValue(newFrame, type); // todo not sure if we need to propagate type / consider boolean context in defined functions - answer seems ye
+                    retVal = code.evalValue(newFrame, type);
                 } catch (ReturnStatement returnStatement) {
                     retVal = returnStatement.retval;
                 } catch (ThrowStatement throwStatement) {

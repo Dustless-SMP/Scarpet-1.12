@@ -1,5 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
 public class NullValue extends NumericValue {
 
     public NullValue() {
@@ -41,5 +44,8 @@ public class NullValue extends NumericValue {
         return o instanceof NullValue ? 0 : -1;
     }
 
-    //todo json
+    @Override
+    public JsonElement toJson(){
+        return new JsonPrimitive(Double.NaN);
+    }
 }

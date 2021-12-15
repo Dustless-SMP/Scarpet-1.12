@@ -2,6 +2,7 @@ package adsen.scarpet.interpreter.parser.value;
 
 import adsen.scarpet.interpreter.parser.exception.ExpressionException;
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
+import com.google.gson.JsonElement;
 
 import java.util.List;
 
@@ -49,5 +50,8 @@ public class FunctionSignatureValue extends Value
     }
     public List<String> getGlobals() {return globals;}
 
-
+    @Override
+    public JsonElement toJson(){
+        throw new InternalExpressionException("Cannot get JSON of scarpet language component");
+    }
 }

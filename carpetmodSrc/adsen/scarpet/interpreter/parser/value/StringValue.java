@@ -1,5 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
 public class StringValue extends Value
 {
     private final String str;
@@ -27,6 +30,11 @@ public class StringValue extends Value
     public Value clone()
     {
         return new StringValue(str);
+    }
+
+    @Override
+    public JsonElement toJson(){
+        return new JsonPrimitive(str);
     }
 
     public StringValue(String str)

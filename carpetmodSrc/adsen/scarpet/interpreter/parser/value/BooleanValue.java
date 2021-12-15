@@ -1,5 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+
 public class BooleanValue extends NumericValue
 {
     public static final BooleanValue FALSE = new BooleanValue(false);
@@ -40,14 +43,9 @@ public class BooleanValue extends NumericValue
     public int hashCode() {
         return Boolean.hashCode(boolValue);
     }
-    //todo json
-    //@Override
-    //public JsonElement toJson() {
-    //    return new JsonPrimitive(boolValue);
-    //}
-    //todo isInteger
-    //@Override
-    //public boolean isInteger() {
-    //    return true;
-    //}
+
+    @Override
+    public JsonElement toJson() {
+        return new JsonPrimitive(boolValue);
+    }
 }

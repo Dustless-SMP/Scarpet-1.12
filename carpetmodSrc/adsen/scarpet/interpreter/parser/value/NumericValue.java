@@ -1,6 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigDecimal;
@@ -171,6 +173,11 @@ public class NumericValue extends Value {
 
     public int getInt(){
         return (int) getLong();
+    }
+
+    @Override
+    public JsonElement toJson(){
+        return new JsonPrimitive(value);
     }
 
     @Override

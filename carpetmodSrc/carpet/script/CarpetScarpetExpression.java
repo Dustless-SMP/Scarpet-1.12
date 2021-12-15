@@ -1,7 +1,6 @@
 package carpet.script;
 
 import adsen.scarpet.interpreter.parser.APIExpression;
-import adsen.scarpet.interpreter.parser.Expression;
 
 
 public class CarpetScarpetExpression extends APIExpression {

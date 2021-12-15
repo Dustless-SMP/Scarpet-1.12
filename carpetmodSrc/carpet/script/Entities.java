@@ -20,8 +20,13 @@ public class Entities {
                 throw new InternalExpressionException("First argument to query should be an entity");
             String what = lv.get(1).getString().toLowerCase(Locale.ROOT);
             Value retval;
-            if (lv.size()==2)
-                retval = ((EntityValue) v).get(what, null);
+            if (lv.size()==2) {
+                try{
+                    retval = ((EntityValue) v).get(what, null);
+                } catch (NullPointerException npe){
+                    throw new InternalExpressionException("''");//todo query function NPE error message
+                }
+            }
             else if (lv.size()==3)
                 retval = ((EntityValue) v).get(what, lv.get(2));
             else

@@ -1,5 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
+import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
+import com.google.gson.JsonElement;
+
 public class GlobalValue extends Value
 {
     public GlobalValue(Value variable)
@@ -25,5 +28,10 @@ public class GlobalValue extends Value
     public boolean getBoolean()
     {
         return false;
+    }
+
+    @Override
+    public JsonElement toJson(){ //I rly dk what to do here tbh.
+        throw new InternalExpressionException("If you got here, ask Ghoulboy, he'll fix it.");
     }
 }

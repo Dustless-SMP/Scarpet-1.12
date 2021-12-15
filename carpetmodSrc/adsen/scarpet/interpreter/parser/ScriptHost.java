@@ -144,9 +144,6 @@ public class ScriptHost {
                     () -> acf.lazyEval(context, Context.VOID, acf.expression, acf.token, argv),
                     context,
                     Context.VOID);
-        } catch (ExpressionException e) {
-            //todo logger
-            //ScarpetInterpreterJava.LOG.error("Callback failed: "+e.getMessage());
-        }
+        } catch (ExpressionException ignored) {}
     }
 }

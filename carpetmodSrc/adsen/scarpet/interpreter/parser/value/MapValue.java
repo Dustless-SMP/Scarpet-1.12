@@ -1,6 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -190,13 +192,10 @@ public class MapValue extends AbstractListValue implements ContainerValueInterfa
         return map.hashCode();
     }
 
-    //todo json
-    //@Override
-    //public JsonElement toJson() {
-    //    JsonObject jsonMap = new JsonObject();
-    //    List<Value> keys = new ArrayList<>(map.keySet());
-    //    Collections.sort(keys);
-    //    keys.forEach(k -> jsonMap.add(k.getString(), map.get(k).toJson()));
-    //    return jsonMap;
-    //}
+    @Override
+    public JsonElement toJson() {
+        JsonObject jsonMap = new JsonObject();
+        map.keySet().forEach(k -> jsonMap.add(k.getString(), map.get(k).toJson()));
+        return jsonMap;
+    }
 }

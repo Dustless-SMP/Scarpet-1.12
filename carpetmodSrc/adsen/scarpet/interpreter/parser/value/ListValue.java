@@ -1,6 +1,8 @@
 package adsen.scarpet.interpreter.parser.value;
 
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -123,7 +125,7 @@ public class ListValue extends AbstractListValue implements ContainerValueInterf
 
     public void subtractFrom(Value v) // if I ever do -= then it wouod remove items
     {
-        throw new UnsupportedOperationException(); // TODO
+        throw new UnsupportedOperationException();
     }
 
     public Value multiply(Value other) {
@@ -277,6 +279,13 @@ public class ListValue extends AbstractListValue implements ContainerValueInterf
         long index = ((NumericValue) where).getLong();
         items.remove(normalizeIndex(index, items.size()));
         return true;
+    }
+
+    @Override
+    public JsonElement toJson(){
+        JsonArray jsonArray = new JsonArray();
+        items.forEach(v->jsonArray.add(v.toJson()));
+        return jsonArray;
     }
 
     public static class ListConstructorValue extends ListValue {
