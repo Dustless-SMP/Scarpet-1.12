@@ -44,7 +44,7 @@ public class CarpetSettings
     public static boolean locked = false;
 
     // TODO: replace these constants at build time
-    public static final String carpetVersion = "v21_07_25";
+    public static final String carpetVersion = "v21_11_10";
     public static final String minecraftVersion = "1.12.2";
     public static final String mcpMappings = "39-1.12";
 
@@ -981,6 +981,10 @@ public class CarpetSettings
 
     @Rule(desc = "Changes default tnt fuse.", category = CREATIVE, validator = "validatePositive", options = {"70", "80", "100"})
     public static int tntFuseLength = 80;
+
+    @Rule(desc = "Removes tnt applying velocity to other entities.", category = CREATIVE)
+    public static boolean removeTNTVelocity = false;
+
     // ===== API ===== //
 
     /**
