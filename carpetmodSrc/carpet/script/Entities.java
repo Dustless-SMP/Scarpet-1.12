@@ -2,6 +2,7 @@ package carpet.script;
 
 import adsen.scarpet.interpreter.parser.Expression;
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
+import adsen.scarpet.interpreter.parser.value.ContainerValueInterface;
 import adsen.scarpet.interpreter.parser.value.ListValue;
 import adsen.scarpet.interpreter.parser.value.Value;
 import carpet.CarpetServer;
@@ -72,6 +73,15 @@ public class Entities {
             else
                 ((EntityValue) v).set(what, ListValue.wrap(lv.subList(2, lv.size())));
             return v;
+        });
+
+        expression.addBinaryOperator("~", 80, false, Value::in);
+        expression.addBinaryOperator(":", 80, false, (v1, v2) -> {
+            if (v1 instanceof ContainerValueInterface) {
+                ContainerValueInterface cvi = (ContainerValueInterface) v1;
+                return cvi.get(v2);
+            }
+            throw new InternalExpressionException("Cannot access element of non-container value");
         });
     }
 }

@@ -1,11 +1,13 @@
-package carpet.commands;
+package carpet.script;
 
-import adsen.scarpet.interpreter.parser.Expression;
-import carpet.script.CarpetScarpetExpression;
+import adsen.scarpet.interpreter.parser.value.NumericValue;
+import carpet.commands.CommandCarpetBase;
+import carpet.script.value.EntityValue;
 import carpet.utils.Messenger;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
+import net.minecraft.entity.Entity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 
@@ -57,15 +59,26 @@ public class CommandScript extends CommandCarpetBase {
         Messenger.m(sender, "gi " + Arrays.toString(args));
 
         StringBuilder scriptBuilder = new StringBuilder();
-        for(int i = 1; i<args.length; i++){
+        for (int i = 1; i < args.length; i++) {
             scriptBuilder.append(args[i]);
         }
 
         String script = scriptBuilder.toString();
 
-        Messenger.m(sender, "gi "+script);
+        Messenger.m(sender, "gi Script: " + script);
+
+        CarpetScarpetExpression.world = sender.getEntityWorld();
+        Entity player = sender.getCommandSenderEntity();
+        BlockPos senderPos = sender.getPosition();
         CarpetScarpetExpression cse = new CarpetScarpetExpression(script);
-        cse.expr.displayOutput(s->Messenger.m(sender, "gi " + s));
+        cse.displayOutput(s -> Messenger.m(sender, "gi " + s), c -> {
+            c.setVariable("x", (cc, tt) -> new NumericValue(senderPos.getX()));
+            c.setVariable("y", (cc, tt) -> new NumericValue(senderPos.getY()));
+            c.setVariable("z", (cc, tt) -> new NumericValue(senderPos.getZ()));
+            if (player != null) c.setVariable("p", (cc, tt) -> new EntityValue(player));
+            return c;
+        });
+        CarpetScarpetExpression.world = null;
     }
 
     /**

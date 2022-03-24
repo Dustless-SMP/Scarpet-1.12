@@ -1,6 +1,7 @@
 package carpet.commands;
 
 import carpet.CarpetServer;
+import carpet.script.CommandScript;
 import narcolepticfrog.rsmm.MeterCommand;
 import net.minecraft.command.CommandHandler;
 

@@ -52,7 +52,7 @@ public class Expression implements Cloneable {
      * The function used to print, must accept a string, and can be use to display results however you want.
      * By default set to {@link System#out#println(String)}, so it prints to command line, but can be set to whatever you want.
      */
-    private final Consumer<String> printFunction = System.out::println;
+    public Consumer<String> printFunction = System.out::println;
     /**
      * The current infix expression
      */
@@ -235,6 +235,15 @@ public class Expression implements Cloneable {
 
     public void addBinaryOperator(String surface, String precedence, boolean leftAssoc, BiFunction<Value, Value, Value> fun) {
         operators.put(surface, new AbstractOperator(Operators.precedence.get(precedence), leftAssoc) {
+            @Override
+            public Value eval(Value v1, Value v2) {
+                Value.assertNotNull(v1, v2);
+                return fun.apply(v1, v2);
+            }
+        });
+    }
+    public void addBinaryOperator(String surface, int precedence, boolean leftAssoc, BiFunction<Value, Value, Value> fun) {
+        operators.put(surface, new AbstractOperator(precedence, leftAssoc) {
             @Override
             public Value eval(Value v1, Value v2) {
                 Value.assertNotNull(v1, v2);
@@ -537,6 +546,7 @@ public class Expression implements Cloneable {
     }
 
     public void displayOutput(Consumer<String> printerFunction) {//Displays the output, i.e the finally evaluated expression.
+        printFunction = printerFunction;
         try {
             printFunction.accept(" = " + eval(Context.simpleParse()).getString());
         } catch (ExpressionException e) {
@@ -546,7 +556,7 @@ public class Expression implements Cloneable {
         }
     }
 
-    Value eval(Context c) {
+    public Value eval(Context c) {
         return eval(c, Context.NONE);
     }
 
