@@ -3,6 +3,7 @@ package adsen.scarpet.interpreter.parser.value;
 import adsen.scarpet.interpreter.parser.exception.ExpressionException;
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
 import com.google.gson.JsonElement;
+import net.minecraft.nbt.NBTBase;
 
 import java.util.List;
 
@@ -53,5 +54,10 @@ public class FunctionSignatureValue extends Value
     @Override
     public JsonElement toJson(){
         throw new InternalExpressionException("Cannot get JSON of scarpet language component");
+    }
+
+    @Override
+    public NBTBase toNbt(){
+        throw new InternalExpressionException("Cannot get NBT of scarpet language component");
     }
 }

@@ -28,6 +28,11 @@ public abstract class Fluff {
         R apply(A a, B b, C c, D d, E e, F f);
     }
 
+    @FunctionalInterface
+    public interface TriConsumer<A, B, C>{
+        void accept(A a, B b, C c);
+    }
+
     public interface ILazyFunction {
         int getNumParams();
 

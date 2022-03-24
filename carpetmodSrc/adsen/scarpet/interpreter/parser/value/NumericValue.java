@@ -3,6 +3,8 @@ package adsen.scarpet.interpreter.parser.value;
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagDouble;
 import org.apache.commons.lang3.StringUtils;
 
 import java.math.BigDecimal;
@@ -178,6 +180,11 @@ public class NumericValue extends Value {
     @Override
     public JsonElement toJson(){
         return new JsonPrimitive(value);
+    }
+
+    @Override
+    public NBTBase toNbt() {
+        return new NBTTagDouble(value);
     }
 
     @Override

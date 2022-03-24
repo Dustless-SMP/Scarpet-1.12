@@ -35,17 +35,27 @@
  public class EntityItem extends Entity
  {
      private static final Logger field_145803_d = LogManager.getLogger();
-@@ -35,6 +43,9 @@
+@@ -32,10 +40,19 @@
+     private int field_70292_b;
+     private int field_145804_b;
+     private int field_70291_e;
++    public int getHealth(){
++        return field_70291_e;
++    }
++    public void setHealth(int newHealth){
++        field_70291_e = newHealth;
++    }
      private String field_145801_f;
      private String field_145802_g;
      public float field_70290_d;
-+    //CM
+ 
 +    public String cm_name() { return "Item"; }
 +    private ItemLogHelper logHelper = null;
- 
++
      public EntityItem(World p_i1709_1_, double p_i1709_2_, double p_i1709_4_, double p_i1709_6_)
      {
-@@ -47,6 +58,12 @@
+         super(p_i1709_1_);
+@@ -47,6 +64,12 @@
          this.field_70159_w = (double)((float)(Math.random() * 0.20000000298023224D - 0.10000000149011612D));
          this.field_70181_x = 0.20000000298023224D;
          this.field_70179_y = (double)((float)(Math.random() * 0.20000000298023224D - 0.10000000149011612D));
@@ -58,7 +68,7 @@
      }
  
      public EntityItem(World p_i1710_1_, double p_i1710_2_, double p_i1710_4_, double p_i1710_6_, ItemStack p_i1710_8_)
-@@ -165,8 +182,20 @@
+@@ -165,8 +188,20 @@
                  }
              }
  
@@ -79,7 +89,7 @@
                  this.func_70106_y();
              }
          }
-@@ -221,8 +250,23 @@
+@@ -221,8 +256,23 @@
                      }
                      else if (itemstack1.func_190916_E() + itemstack.func_190916_E() > itemstack1.func_77976_d())
                      {
@@ -103,7 +113,7 @@
                      else
                      {
                          itemstack1.func_190917_f(itemstack.func_190916_E());
-@@ -256,6 +300,8 @@
+@@ -256,6 +306,8 @@
  
      public boolean func_70072_I()
      {
@@ -112,7 +122,7 @@
          if (this.field_70170_p.func_72918_a(this.func_174813_aQ(), Material.field_151586_h, this))
          {
              if (!this.field_70171_ac && !this.field_70148_d)
-@@ -269,7 +315,8 @@
+@@ -269,7 +321,8 @@
          {
              this.field_70171_ac = false;
          }
@@ -122,7 +132,7 @@
          return this.field_70171_ac;
      }
  
-@@ -295,6 +342,15 @@
+@@ -295,6 +348,15 @@
  
              if (this.field_70291_e <= 0)
              {
@@ -138,7 +148,7 @@
                  this.func_70106_y();
              }
  
-@@ -366,6 +422,10 @@
+@@ -366,6 +428,10 @@
              Item item = itemstack.func_77973_b();
              int i = itemstack.func_190916_E();
  
@@ -149,7 +159,7 @@
              if (this.field_145804_b == 0 && (this.field_145802_g == null || 6000 - this.field_70292_b <= 200 || this.field_145802_g.equals(p_70100_1_.func_70005_c_())) && p_70100_1_.field_71071_by.func_70441_a(itemstack))
              {
                  p_70100_1_.func_71001_a(this, i);
-@@ -376,8 +436,13 @@
+@@ -376,8 +442,13 @@
                      itemstack.func_190920_e(i);
                  }
  
@@ -164,7 +174,7 @@
          }
      }
  
-@@ -450,6 +515,11 @@
+@@ -450,6 +521,11 @@
          this.field_145804_b = 32767;
      }
  
@@ -176,7 +186,7 @@
      public void func_174867_a(int p_174867_1_)
      {
          this.field_145804_b = p_174867_1_;
-@@ -470,4 +540,9 @@
+@@ -470,4 +546,9 @@
          this.func_174871_r();
          this.field_70292_b = 5999;
      }

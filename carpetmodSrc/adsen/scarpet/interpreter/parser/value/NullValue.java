@@ -2,6 +2,8 @@ package adsen.scarpet.interpreter.parser.value;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagEnd;
 
 public class NullValue extends NumericValue {
 
@@ -48,4 +50,6 @@ public class NullValue extends NumericValue {
     public JsonElement toJson(){
         return new JsonPrimitive(Double.NaN);
     }
+
+    //todo figure out how null becomes nbt
 }

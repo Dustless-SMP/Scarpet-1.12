@@ -2,6 +2,7 @@ package adsen.scarpet.interpreter.parser.value;
 
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
 import com.google.gson.JsonElement;
+import net.minecraft.nbt.NBTBase;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -150,6 +151,8 @@ public abstract class Value implements Comparable<Value>, Cloneable {
     }
 
     public abstract JsonElement toJson();
+
+    public abstract NBTBase toNbt();
 
     public long readInteger() {
         return (long) readNumber();

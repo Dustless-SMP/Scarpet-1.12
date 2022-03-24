@@ -41,11 +41,12 @@
          if (this.func_73083_d())
          {
              if (!this.field_73092_a.func_175719_a((EntityPlayer)null, p_180784_1_, p_180784_2_))
-@@ -191,6 +204,11 @@
+@@ -191,6 +204,12 @@
                  this.field_73088_d = true;
                  this.field_180240_f = p_180784_1_;
                  int i = (int)(f * 10.0F);
-+                //CM mining ghost blocks fix
++                //CM
++                //mining ghost blocks fix
 +                if (CarpetSettings.miningGhostBlocksFix && activateInstantMine)
 +                {
 +                    field_73090_b.field_71135_a.func_147359_a(new SPacketBlockChange(field_73092_a, field_180240_f));
@@ -53,24 +54,30 @@
                  this.field_73092_a.func_175715_c(this.field_73090_b.func_145782_y(), p_180784_1_, i);
                  this.field_73094_o = i;
              }
-@@ -225,6 +243,16 @@
+@@ -225,6 +244,22 @@
          }
      }
  
-+    //CM
 +    public BlockPos getDestroyPos(){
 +        return field_180240_f;
 +    }
 +
-+    //CM
++    public void setDestroyPos(BlockPos destroyPos){
++        this.field_180240_f = destroyPos;
++    }
++
 +    public int getDurabilityRemainingOnBlock() {
 +        return field_73094_o;
++    }
++
++    public void setDurabilityRemainingOnBlock(int durability) {
++        field_73094_o = durability;
 +    }
 +
      public void func_180238_e()
      {
          this.field_73088_d = false;
-@@ -235,8 +263,10 @@
+@@ -235,8 +270,10 @@
      {
          IBlockState iblockstate = this.field_73092_a.func_180495_p(p_180235_1_);
          iblockstate.func_177230_c().func_176208_a(this.field_73092_a, p_180235_1_, iblockstate, this.field_73090_b);
@@ -82,7 +89,7 @@
          if (flag)
          {
              iblockstate.func_177230_c().func_176206_d(this.field_73092_a, p_180235_1_, iblockstate);
-@@ -288,7 +318,15 @@
+@@ -288,7 +325,15 @@
                  }
  
                  this.field_73092_a.func_180498_a(this.field_73090_b, 2001, p_180237_1_, Block.func_176210_f(iblockstate));
@@ -99,7 +106,7 @@
  
                  if (this.func_73083_d())
                  {
-@@ -307,10 +345,19 @@
+@@ -307,10 +352,19 @@
  
                      if (flag1 && flag)
                      {
@@ -119,7 +126,7 @@
                  return flag1;
              }
          }
-@@ -402,10 +449,22 @@
+@@ -402,10 +456,22 @@
          }
          else
          {

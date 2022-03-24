@@ -27,7 +27,18 @@
          }
  
          return enumactionresult;
-@@ -207,6 +212,8 @@
+@@ -190,6 +195,10 @@
+         return this.func_77973_b().func_77654_b(this, p_77950_1_, p_77950_2_);
+     }
+ 
++    public NBTTagCompound writeToNBT(){
++        return this.func_77955_b(new NBTTagCompound());
++    }
++
+     public NBTTagCompound func_77955_b(NBTTagCompound p_77955_1_)
+     {
+         ResourceLocation resourcelocation = Item.field_150901_e.func_177774_c(this.field_151002_e);
+@@ -207,6 +216,8 @@
  
      public int func_77976_d()
      {
@@ -36,7 +47,7 @@
          return this.func_77973_b().func_77639_j();
      }
  
-@@ -334,7 +341,8 @@
+@@ -334,7 +345,8 @@
  
          if (flag)
          {
@@ -46,7 +57,7 @@
          }
      }
  
-@@ -344,7 +352,8 @@
+@@ -344,7 +356,8 @@
  
          if (flag)
          {
@@ -56,7 +67,7 @@
          }
      }
  
-@@ -496,7 +505,8 @@
+@@ -496,7 +509,8 @@
  
      public void func_77980_a(World p_77980_1_, EntityPlayer p_77980_2_, int p_77980_3_)
      {
@@ -66,7 +77,7 @@
          this.func_77973_b().func_77622_d(this, p_77980_1_, p_77980_2_);
      }
  
-@@ -881,4 +891,10 @@
+@@ -881,4 +895,10 @@
      {
          this.func_190917_f(-p_190918_1_);
      }

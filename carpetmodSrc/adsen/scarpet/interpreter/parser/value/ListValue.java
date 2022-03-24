@@ -3,6 +3,8 @@ package adsen.scarpet.interpreter.parser.value;
 import adsen.scarpet.interpreter.parser.exception.InternalExpressionException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagList;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -286,6 +288,13 @@ public class ListValue extends AbstractListValue implements ContainerValueInterf
         JsonArray jsonArray = new JsonArray();
         items.forEach(v->jsonArray.add(v.toJson()));
         return jsonArray;
+    }
+
+    @Override
+    public NBTBase toNbt(){
+        NBTTagList nbtList = new NBTTagList();
+        items.forEach(v->nbtList.appendTag(v.toNbt()));
+        return nbtList;
     }
 
     public static class ListConstructorValue extends ListValue {

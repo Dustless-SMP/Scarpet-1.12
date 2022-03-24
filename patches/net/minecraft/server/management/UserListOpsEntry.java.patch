@@ -1,0 +1,22 @@
+--- ../src-base/minecraft/net/minecraft/server/management/UserListOpsEntry.java
++++ ../src-work/minecraft/net/minecraft/server/management/UserListOpsEntry.java
+@@ -6,7 +6,7 @@
+ 
+ public class UserListOpsEntry extends UserListEntry<GameProfile>
+ {
+-    private final int field_152645_a;
++    private int field_152645_a;
+     private final boolean field_183025_b;
+ 
+     public UserListOpsEntry(GameProfile p_i46492_1_, int p_i46492_2_, boolean p_i46492_3_)
+@@ -28,6 +28,10 @@
+         return this.field_152645_a;
+     }
+ 
++    public void setPermissionLevel(int newPermissionLevel){
++        field_152645_a = newPermissionLevel;
++    }
++
+     public boolean func_183024_b()
+     {
+         return this.field_183025_b;

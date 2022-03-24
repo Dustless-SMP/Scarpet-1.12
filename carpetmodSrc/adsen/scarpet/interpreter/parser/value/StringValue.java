@@ -2,6 +2,8 @@ package adsen.scarpet.interpreter.parser.value;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagString;
 
 public class StringValue extends Value
 {
@@ -35,6 +37,11 @@ public class StringValue extends Value
     @Override
     public JsonElement toJson(){
         return new JsonPrimitive(str);
+    }
+
+    @Override
+    public NBTBase toNbt(){
+        return new NBTTagString(str);
     }
 
     public StringValue(String str)

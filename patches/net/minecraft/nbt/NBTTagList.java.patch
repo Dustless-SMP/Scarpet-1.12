@@ -1,0 +1,11 @@
+--- ../src-base/minecraft/net/minecraft/nbt/NBTTagList.java
++++ ../src-work/minecraft/net/minecraft/nbt/NBTTagList.java
+@@ -281,4 +281,8 @@
+     {
+         return this.field_74746_b;
+     }
++
++    public List<NBTBase> getTagList(){
++        return getTagList();
++    }
+ }

@@ -206,7 +206,18 @@
      public static void func_190533_a(DataFixer p_190533_0_)
      {
          p_190533_0_.func_188258_a(FixTypes.ENTITY, new IDataWalker()
-@@ -1619,6 +1703,11 @@
+@@ -1564,6 +1648,10 @@
+         });
+     }
+ 
++    public NBTTagCompound writeToNBT(){
++        return func_189511_e(new NBTTagCompound());
++    }
++
+     public NBTTagCompound func_189511_e(NBTTagCompound p_189511_1_)
+     {
+         try
+@@ -1619,6 +1707,11 @@
                  p_189511_1_.func_74782_a("Tags", nbttaglist);
              }
  
@@ -218,7 +229,7 @@
              this.func_70014_b(p_189511_1_);
  
              if (this.func_184207_aI())
-@@ -1663,19 +1752,19 @@
+@@ -1663,19 +1756,19 @@
              this.field_70181_x = nbttaglist2.func_150309_d(1);
              this.field_70179_y = nbttaglist2.func_150309_d(2);
  
@@ -249,7 +260,7 @@
              }
  
              this.field_70165_t = nbttaglist.func_150309_d(0);
-@@ -1744,6 +1833,17 @@
+@@ -1744,6 +1837,17 @@
              {
                  this.func_70107_b(this.field_70165_t, this.field_70163_u, this.field_70161_v);
              }
@@ -267,7 +278,7 @@
          }
          catch (Throwable throwable)
          {
-@@ -1908,7 +2008,12 @@
+@@ -1908,7 +2012,12 @@
  
      public double func_70042_X()
      {
@@ -280,7 +291,7 @@
      }
  
      public boolean func_184220_m(Entity p_184220_1_)
-@@ -1948,6 +2053,12 @@
+@@ -1948,6 +2057,12 @@
          return this.field_184245_j <= 0;
      }
  
@@ -293,11 +304,10 @@
      public void func_184226_ay()
      {
          for (int i = this.field_184244_h.size() - 1; i >= 0; --i)
-@@ -1966,6 +2077,18 @@
+@@ -1966,6 +2081,16 @@
          }
      }
  
-+    // CM
 +    public final void dismountRidingEntityBase()
 +    {
 +        if (this.field_184239_as != null)
@@ -307,11 +317,26 @@
 +            entity.func_184225_p(this);
 +        }
 +    }
-+    // CM END
 +
      protected void func_184200_o(Entity p_184200_1_)
      {
          if (p_184200_1_.func_184187_bx() != this)
+@@ -2047,13 +2172,11 @@
+         return field_190535_b;
+     }
+ 
+-    public Iterable<ItemStack> func_184193_aE()
+-    {
++    public Iterable<ItemStack> func_184193_aE() {
+         return field_190535_b;
+     }
+ 
+-    public Iterable<ItemStack> func_184209_aF()
+-    {
++    public Iterable<ItemStack> func_184209_aF() {
+         return Iterables.<ItemStack>concat(this.func_184214_aD(), this.func_184193_aE());
+     }
+ 
 @@ -2398,7 +2521,10 @@
                  float f = this.field_70177_z;
                  this.func_70012_b(d0, this.field_70163_u, d1, 90.0F, 0.0F);

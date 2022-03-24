@@ -2,6 +2,8 @@ package adsen.scarpet.interpreter.parser.value;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTTagByte;
 
 public class BooleanValue extends NumericValue
 {
@@ -47,5 +49,10 @@ public class BooleanValue extends NumericValue
     @Override
     public JsonElement toJson() {
         return new JsonPrimitive(boolValue);
+    }
+
+    @Override
+    public NBTBase toNbt(){
+        return new NBTTagByte((byte) (boolValue ? 1 : 0));
     }
 }

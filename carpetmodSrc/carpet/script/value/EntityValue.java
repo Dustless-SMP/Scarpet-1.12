@@ -8,10 +8,7 @@ import adsen.scarpet.interpreter.parser.value.NumericValue;
 import adsen.scarpet.interpreter.parser.value.StringValue;
 import adsen.scarpet.interpreter.parser.value.Value;
 import carpet.patches.EntityPlayerMPFake;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.command.EntitySelector;
 import net.minecraft.command.ICommandSender;
@@ -31,14 +28,15 @@ import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.passive.EntityWaterMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.UserListOpsEntry;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameType;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -120,24 +118,37 @@ public class EntityValue extends Value {
         put("despawn_timer", (e, a) -> e instanceof EntityLivingBase ?
                 new NumericValue(((EntityLivingBase) e).getIdleTime()) :
                 e instanceof EntityItem ? new NumericValue(((EntityItem) e).getAge()) : Value.NULL);
-        //todo items
-        //put("item", (e, a) -> (e instanceof ItemEntity)?ValueConversions.of(((ItemEntity) e).getStack()):Value.NULL);
-        //put("holds", (e, a) -> {
-        //    EquipmentSlot where = EquipmentSlot.MAINHAND;
-        //    if (a != null)
-        //        where = inventorySlots.get(a.getString());
-        //    if (where == null)
-        //        throw new InternalExpressionException("Unknown inventory slot: "+a.getString());
-        //    if (e instanceof EntityLivingBase)
-        //        return ValueConversions.of(((EntityLivingBase)e).getEquippedStack(where));
-        //    return Value.NULL;
-        //});
+        put("item", (e, a) -> (e instanceof EntityItem) ? ValueConversions.of(((EntityItem) e).getItem()) : Value.NULL);
+        put("holds", (e, a) -> {
+            if (!(e instanceof EntityLivingBase)) return Value.NULL;
+            EntityLivingBase ep = (EntityLivingBase) e;
+            Iterable<ItemStack> inventory = ep.getEquipmentAndArmor();
+            int where = (e instanceof EntityPlayer) ? ((EntityPlayer) e).inventory.currentItem : 0;
+            if (a != null)
+                where = a.readInt();
+            ItemStack item = null;
+            int i = where;
+            for (ItemStack itemStack : inventory) {
+                if (i == 0) {
+                    item = itemStack;
+                    break;
+                }
+                i--;
+            }
+            if (i != 0 && a != null)
+                throw new InternalExpressionException("Unknown inventory slot: " + a.getString());
 
-        //put("selected_slot", (e, a) -> {
-        //    if (e instanceof EntityPlayer)
-        //        return new NumericValue(((EntityPlayer) e).getInventory().selectedSlot); //getInventory
-        //    return Value.NULL;
-        //});
+            if (item == null)
+                return Value.NULL;
+            else
+                return ValueConversions.of(item);
+        });
+
+        put("selected_slot", (e, a) -> {
+            if (e instanceof EntityPlayer)
+                return new NumericValue(((EntityPlayer) e).inventory.currentItem); //getInventory
+            return Value.NULL;
+        });
 
         put("count", (e, a) -> (e instanceof EntityItem) ? new NumericValue(((EntityItem) e).getItem().getCount()) : Value.NULL);
         put("pickup_delay", (e, a) -> (e instanceof EntityItem) ? new NumericValue(((EntityItem) e).getPickupDelay()) : Value.NULL);
@@ -290,10 +301,9 @@ public class EntityValue extends Value {
             if (e instanceof EntityLivingBase) {
                 return new NumericValue(((EntityLivingBase) e).getHealth());
             }
-            //if (e instanceof ItemEntity)
-            //{
-            //    e.h consider making item health public
-            //}
+            if (e instanceof EntityItem) {
+                new NumericValue(((EntityItem) e).getHealth());
+            }
             return Value.NULL;
         });
 
@@ -492,7 +502,15 @@ public class EntityValue extends Value {
         ////todo test entity type vs command name
         //put("custom_name", (e, a) -> e.hasCustomName() ? new StringValue(e.getCustomNameTag()) : Value.NULL);
         //todo riding
-        //put("riding", (e, a) -> BooleanValue.of(e.isRiding()));
+        put("riding", (e, a) -> {
+            if (a == NULL) {
+                e.dismountRidingEntity();
+            } else if (a instanceof EntityValue) {
+                e.startRiding(((EntityValue) a).getEntity(), true);
+            } else {
+                throw new InternalExpressionException("Second argument to modify(e, 'riding') should be an entity to ride");
+            }
+        });
         //put("passengers", (e, a) -> ListValue.wrap(e.getPassengers().stream().map(EntityValue::new).collect(Collectors.toList())));
         //put("mount", (e, a) -> e.isRiding() ? new EntityValue(e.getRidingEntity()) : Value.NULL);
         ////todo scoreboards
@@ -555,25 +573,19 @@ public class EntityValue extends Value {
                 el.setIdleTime(a.readInt());
             }
         });
-        ////todo items
-        ////put("item", (e, a) -> (e instanceof ItemEntity)?ValueConversions.of(((ItemEntity) e).getStack()):Value.NULL);
-        ////put("holds", (e, a) -> {
-        ////    EquipmentSlot where = EquipmentSlot.MAINHAND;
-        ////    if (a != null)
-        ////        where = inventorySlots.get(a.getString());
-        ////    if (where == null)
-        ////        throw new InternalExpressionException("Unknown inventory slot: "+a.getString());
-        ////    if (e instanceof EntityLivingBase)
-        ////        return ValueConversions.of(((EntityLivingBase)e).getEquippedStack(where));
-        ////    return Value.NULL;
-        ////});
-//
-        ////put("selected_slot", (e, a) -> {
-        ////    if (e instanceof EntityPlayer)
-        ////        return new NumericValue(((EntityPlayer) e).getInventory().selectedSlot); //getInventory
-        ////    return Value.NULL;
-        ////});
-//
+        put("item", (e, a) -> {
+            if (e instanceof EntityItem) {
+                EntityItem item = ((EntityItem) e);
+                int count = item.getItem().getCount();
+                //noinspection ConstantConditions
+                item.setItem(new ItemStack(Item.getByNameOrId(a.getString()), count));
+            }
+        });
+
+        put("selected_slot", (e, a) -> {
+            if (e instanceof EntityPlayer) ((EntityPlayer) e).inventory.currentItem = a.readInt();
+        });
+
         put("count", (e, a) -> {
             if (e instanceof EntityItem) ((EntityItem) e).getItem().setCount(a.readInt());
         });
@@ -687,26 +699,16 @@ public class EntityValue extends Value {
         ////    return Value.NULL;
         ////});
 ////
-        //put("permission_level", (e, a) -> {
-        //    if (!(e instanceof EntityPlayerMP)) return Value.NULL;
-        //    EntityPlayerMP emp = (EntityPlayerMP) e;
-        //    if (emp.server.getPlayerList().canSendCommands(emp.getGameProfile())) {
-        //        UserListOpsEntry userlistopsentry = emp.server.getPlayerList().getOppedPlayers().getEntry(emp.getGameProfile());
+        put("permission_level", (e, a) -> {
+            if (!(e instanceof EntityPlayerMP)) return;
+            EntityPlayerMP emp = (EntityPlayerMP) e;
+            if (emp.server.getPlayerList().canSendCommands(emp.getGameProfile())) {
+                UserListOpsEntry userlistopsentry = emp.server.getPlayerList().getOppedPlayers().getEntry(emp.getGameProfile());
+
+                userlistopsentry.setPermissionLevel(a.readInt());
+            }
+        });
 //
-        //        return new NumericValue(userlistopsentry.getPermissionLevel());
-        //    } else {
-        //        return Value.NULL;
-        //    }
-        //});
-//
-//
-        //put("player_type", (e, a) -> {
-        //    if (e instanceof EntityPlayer) {
-        //        if (e instanceof EntityPlayerMPFake) return new StringValue("fake");
-        //        return new StringValue("multiplayer");
-        //    }
-        //    return Value.NULL;
-        //});
 //
         ////todo client brand
         ////put("client_brand", (e, a) -> {
@@ -717,14 +719,7 @@ public class EntityValue extends Value {
         ////    return Value.NULL;
         ////});
 //
-        //put("ping", (e, a) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        EntityPlayerMP spe = (EntityPlayerMP) e;
-        //        return new NumericValue(spe.ping);
-        //    }
-        //    return Value.NULL;
-        //});
-//
+
         ////todo effects
         ////put("effect", (e, a) ->
         ////{
@@ -755,74 +750,62 @@ public class EntityValue extends Value {
         ////    return ListValue.of( new NumericValue(pe.getAmplifier()), new NumericValue(pe.getDuration()) );
         ////});
 ////
-        //put("health", (e, a) ->
-        //{
-        //    if (e instanceof EntityLivingBase) {
-        //        return new NumericValue(((EntityLivingBase) e).getHealth());
-        //    }
-        //    //if (e instanceof ItemEntity)
-        //    //{
-        //    //    e.h consider making item health public
-        //    //}
-        //    return Value.NULL;
-        //});
-//
-        //put("may_fly", (e, a) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return BooleanValue.of(((EntityPlayerMP) e).capabilities.allowFlying);
-        //    }
-        //    return Value.NULL;
-        //});
-//
-        //put("flying", (e, v) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return BooleanValue.of(((EntityPlayerMP) e).capabilities.isFlying);
-        //    }
-        //    return Value.NULL;
-        //});
-//
-        //put("may_build", (e, v) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return BooleanValue.of(((EntityPlayerMP) e).capabilities.allowEdit);
-        //    }
-        //    return Value.NULL;
-        //});
-//
-        //put("insta_build", (e, v) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return BooleanValue.of(((EntityPlayerMP) e).capabilities.isCreativeMode);
-        //    }
-        //    return Value.NULL;
-        //});
-//
-        //put("fly_speed", (e, v) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return NumericValue.of(((EntityPlayerMP) e).capabilities.getFlySpeed());
-        //    }
-        //    return Value.NULL;
-        //});
-//
-        //put("walk_speed", (e, v) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return NumericValue.of(((EntityPlayerMP) e).capabilities.getWalkSpeed());
-        //    }
-        //    return Value.NULL;
-        //});
-//
-//
-        //put("active_block", (e, a) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return ValueConversions.of(((EntityPlayerMP) e).interactionManager.getDestroyPos());
-        //    }
-        //    return Value.NULL;
-        //});
-//
-        //put("breaking_progress", (e, a) -> {
-        //    if (e instanceof EntityPlayerMP) {
-        //        return new NumericValue(((EntityPlayerMP) e).interactionManager.getDurabilityRemainingOnBlock());
-        //    }
-        //    return Value.NULL;
-        //});
+        put("health", (e, a) -> {
+            if (e instanceof EntityLivingBase) {
+                ((EntityLivingBase) e).setHealth((float) a.readNumber());
+            }
+            if (e instanceof EntityItem) {
+                ((EntityItem) e).setHealth(a.readInt());
+            }
+        });
+
+        put("may_fly", (e, v) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).capabilities.allowFlying = v.getBoolean();
+            }
+        });
+
+        put("flying", (e, v) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).capabilities.isFlying = v.getBoolean();
+            }
+        });
+
+        put("may_build", (e, v) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).capabilities.allowEdit = v.getBoolean();
+            }
+        });
+
+        put("insta_build", (e, v) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).capabilities.isCreativeMode = v.getBoolean();
+            }
+        });
+
+        put("fly_speed", (e, v) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).capabilities.setFlySpeed((float) v.readNumber());
+            }
+        });
+
+        put("walk_speed", (e, v) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).capabilities.setWalkSpeed((float) v.readNumber());
+            }
+        });
+
+        put("active_block", (e, a) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).interactionManager.setDestroyPos(((BlockValue) a).getPos());
+            }
+        });
+
+        put("breaking_progress", (e, a) -> {
+            if (e instanceof EntityPlayerMP) {
+                ((EntityPlayerMP) e).interactionManager.setDurabilityRemainingOnBlock(a.readInt());
+            }
+        });
 //
         ////todo facing/tracing
         ////put("facing", (e, a) -> {
@@ -1026,9 +1009,26 @@ public class EntityValue extends Value {
         }
     }
 
+    public void set(String what, Value toWhat) {
+        if (!(featureModifiers.containsKey(what)))
+            throw new InternalExpressionException("Unknown entity action: " + what);
+        try {
+            featureModifiers.get(what).accept(getEntity(), toWhat);
+        } catch (NullPointerException npe) {
+            throw new InternalExpressionException("'modify' for '" + what + "' expects a value");
+        } catch (IndexOutOfBoundsException ind) {
+            throw new InternalExpressionException("Wrong number of arguments for `modify` option: " + what);
+        }
+    }
+
     @Override
-    public JsonElement toJson(){
+    public JsonElement toJson() {
         return new JsonPrimitive(getString());
+    }
+
+    @Override
+    public NBTBase toNbt() {
+        return entity.writeToNBT();
     }
 
     @Override

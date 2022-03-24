@@ -1,0 +1,19 @@
+--- ../src-base/minecraft/net/minecraft/entity/player/PlayerCapabilities.java
++++ ../src-work/minecraft/net/minecraft/entity/player/PlayerCapabilities.java
+@@ -53,8 +53,16 @@
+         return this.field_75096_f;
+     }
+ 
++    public void func_75092_a(float p_75092_1_){
++        this.field_75096_f = p_75092_1_;
++    }
++
+     public float func_75094_b()
+     {
+         return this.field_75097_g;
+     }
++
++    public void setWalkSpeed(float newWalkSpeed){
++        this.field_75097_g = newWalkSpeed;
++    }
+ }
